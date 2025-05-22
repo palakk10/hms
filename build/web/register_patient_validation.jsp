@@ -1,78 +1,87 @@
-<%@page import="java.sql.*" %>
-
-
+<%@ page import="java.sql.*, java.text.SimpleDateFormat" %>
 <%
+    String pname = request.getParameter("patientname");
+    String email = request.getParameter("email");
+    String pwd = request.getParameter("pwd");
 
+    String phone = request.getParameter("phone");
+    String rov = request.getParameter("rov");
+    String gender = request.getParameter("gender");
+    String age = request.getParameter("age");
+    String bgroup = request.getParameter("bgroup");
+    String street = request.getParameter("street");
+    String area = request.getParameter("area");
+    String city = request.getParameter("city");
+    String state = request.getParameter("state");
+    String country = request.getParameter("country");
+    String pincode = request.getParameter("pincode");
 
+    // Room, Bed, and Doctor will be assigned by admin later, so set as NULL
+    Integer roomNo = null;
+    Integer bedNo = null;
 
-        String pid=request.getParameter("patientid");
+    // Current date for DATE_AD
+    java.util.Date currentDate = new java.util.Date();
+    java.sql.Date sqlDate = new java.sql.Date(currentDate.getTime());
 
-	String pname=request.getParameter("patientname");
+    Connection con = null;
+    PreparedStatement ps = null;
 
-	String email=request.getParameter("email");
+    try {
+        Class.forName("com.mysql.cj.jdbc.Driver");
+        con = DriverManager.getConnection("jdbc:mysql://localhost:3306/hms", "root", "Naman@123");
 
-	String pwd=request.getParameter("pwd");
+        String sql = "INSERT INTO PATIENT_INFO (PNAME, GENDER, AGE, BGROUP, PHONE, REA_OF_VISIT, ROOM_NO, BED_NO, DOCTOR_ID, DATE_AD, EMAIL, PASSWORD, STREET, AREA, CITY, STATE, COUNTRY, PINCODE) " +
+                     "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
 
-	String add=request.getParameter("add");
+        ps = con.prepareStatement(sql);
 
-	String phone=request.getParameter("phone");
+        ps.setString(1, pname);
+        ps.setString(2, gender);
+        ps.setInt(3, Integer.parseInt(age));
+        ps.setString(4, bgroup);
+        ps.setString(5, phone);
+        ps.setString(6, rov);
 
-	String rov=request.getParameter("rov");
+        // Set ROOM_NO and BED_NO as NULL because admin assigns them later
+        ps.setNull(7, java.sql.Types.INTEGER);
+        ps.setNull(8, java.sql.Types.INTEGER);
 
-	String roomNo="0";//request.getParameter("roomNo");
+        // Set DOCTOR_ID as NULL because admin assigns doctor later
+        ps.setNull(9, java.sql.Types.INTEGER);
 
-	String bedNo="0";//request.getParameter("bed_no");
+        ps.setDate(10, sqlDate);
+        ps.setString(11, email);
+        ps.setString(12, pwd);
+        ps.setString(13, street);
+        ps.setString(14, area);
+        ps.setString(15, city);
+        ps.setString(16, state);
+        ps.setString(17, country);
+        ps.setString(18, pincode);
 
-	String doct="Not Reffered";//request.getParameter("doct");
+        int i = ps.executeUpdate();
 
-	String gender=request.getParameter("gender");
-
-	String joindate="Not Provided";//request.getParameter("joindate");
-
-	String age=request.getParameter("age");
-
-	String bgroup=request.getParameter("bgroup");
-
-
-        Connection con=(Connection)application.getAttribute("connection");
-        PreparedStatement ps=con.prepareStatement("insert into patient_info(pname,gender,age,bgroup,phone,rea_of_visit,room_no,bed_no,doc_name,date_ad,email,password,address) values(?,?,?,?,?,?,?,?,?,?,?,?,?)");
-  
-      	ps.setString(1,pname);
-      	ps.setString(2,gender);
-     	ps.setInt(3,Integer.parseInt(age));
-     	ps.setString(4,bgroup);
-     	ps.setString(5,phone);
-     	ps.setString(6,rov);
-      	ps.setInt(7,Integer.parseInt(roomNo));
-      	ps.setInt(8,Integer.parseInt(bedNo));
-      	ps.setString(9,doct);
-      	ps.setString(10,joindate);
-      	ps.setString(11,email);
-      	ps.setString(12,pwd);
-      	ps.setString(13,add);
-
-	int i =ps.executeUpdate();
-  
-	if(i>0)
-
-	{
+        if (i > 0) {
 %>
-<div style="text-align:center;margin-top:25%">
-<font color="magenta">
-<script type="text/javascript">
-function Redirect()
-{
-    window.location="index.jsp";
-}
-document.write("<h2>Patient Registration Successfull.Login to See More Details.</h2><br><Br>");
-document.write("<h3>Redirecting you to home page....</h3>");
-setTimeout('Redirect()', 3000);
-</script>
-</font>
-</div>
+            <script>
+                alert("Patient Registered Successfully! Admin will assign room and doctor details.");
+                window.location.href = "index.jsp";
+            </script>
 <%
-	}
-
-	ps.close();
-	con.commit();	
+        } else {
+%>
+            <script>
+                alert("Registration Failed!");
+                window.history.back();
+            </script>
+<%
+        }
+    } catch (Exception e) {
+        out.println("Error: " + e.getMessage());
+        e.printStackTrace();
+    } finally {
+        if (ps != null) try { ps.close(); } catch(Exception e) {}
+        if (con != null) try { con.close(); } catch(Exception e) {}
+    }
 %>
