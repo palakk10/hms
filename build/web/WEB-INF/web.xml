@@ -1,5 +1,22 @@
-<web-app>
-	<listener>
-		<listener-class>ConnectionDao</listener-class>
-	</listener>
+<?xml version="1.0" encoding="UTF-8"?>
+<web-app version="2.4" xmlns="http://java.sun.com/xml/ns/j2ee" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://java.sun.com/xml/ns/j2ee                               http://java.sun.com/xml/ns/j2ee/web-app_2_4.xsd">
+    <listener>
+        <listener-class>ConnectionDao</listener-class>
+    </listener>
+    <servlet>
+        <servlet-name>pateint_reg_ser</servlet-name>
+        <servlet-class>pateint_reg_ser</servlet-class>
+    </servlet>
+    <servlet>
+        <servlet-name>PatientRegistrationServlet</servlet-name>
+        <servlet-class>PatientRegistrationServlet</servlet-class>
+    </servlet>
+    <servlet-mapping>
+        <servlet-name>pateint_reg_ser</servlet-name>
+        <url-pattern>/pateint_reg_ser</url-pattern>
+    </servlet-mapping>
+    <servlet-mapping>
+        <servlet-name>PatientRegistrationServlet</servlet-name>
+        <url-pattern>/PatientRegistrationServlet</url-pattern>
+    </servlet-mapping>
 </web-app>

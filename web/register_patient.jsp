@@ -120,15 +120,63 @@
                             </div>
                         </div>
 
+                        <!-- Reason of Visit dropdown with scrollbar on overflow -->
                         <div class="form-group">
                             <label class="col-sm-2 control-label">Reason Of Visit</label>
                             <div class="col-sm-10">
-                                <input type="text" class="form-control" name="rov" placeholder="Reason Of Visit" required>
+                                <select name="rov" class="form-control" required>
+                                    <option value="">-- Select Reason --</option>
+                                    <option>Fever</option>
+                                    <option>Cold / Cough</option>
+                                    <option>Headache / Migraine</option>
+                                    <option>Chest Pain</option>
+                                    <option>Shortness of Breath / Difficulty Breathing</option>
+                                    <option>Abdominal Pain / Stomach Ache</option>
+                                    <option>Back Pain</option>
+                                    <option>Joint Pain / Arthritis</option>
+                                    <option>Skin Rash / Allergies</option>
+                                    <option>Diarrhea / Vomiting</option>
+                                    <option>Fatigue / Weakness</option>
+                                    <option>High Blood Pressure (Hypertension)</option>
+                                    <option>Diabetes Checkup / High Blood Sugar</option>
+                                    <option>Infection (e.g. Urinary Tract Infection, Respiratory Infection)</option>
+                                    <option>Injury / Trauma (e.g. fractures, cuts, bruises)</option>
+                                    <option>Pregnancy Checkup / Antenatal Care</option>
+                                    <option>Mental Health Issues (Anxiety, Depression)</option>
+                                    <option>Vision Problems / Eye Pain</option>
+                                    <option>Earache / Hearing Problems</option>
+                                    <option>Dental Pain</option>
+                                    <option>Follow-up / Routine Checkup</option>
+                                    <option>Medication Refill</option>
+                                    <option>Allergy Reaction</option>
+                                    <option>Asthma Attack</option>
+                                    <option>Skin Infection / Boils</option>
+                                    <option>Weight Loss / Gain</option>
+                                    <option>Blood Disorders (Anemia, Bleeding)</option>
+                                    <option>Palpitations / Irregular Heartbeat</option>
+                                    <option>Neurological Problems (Seizures, Dizziness)</option>
+                                    <option>Swelling (Edema)</option>
+                                    <option>Urinary Problems / Painful Urination</option>
+                                    <option>Sore Throat</option>
+                                    <option>Cold Sores / Mouth Ulcers</option>
+                                    <option>Chest Infection / Pneumonia</option>
+                                    <option>Flu / Influenza</option>
+                                    <option>COVID-19 Symptoms</option>
+                                    <option>Vaccination</option>
+                                    <option>Physical Examination / Health Screening</option>
+                                </select>
                             </div>
                         </div>
 
-                        <!-- Admin Controlled Fields removed from form -->
+                        <!-- Textarea for detailed description -->
+                        <div class="form-group">
+                            <label class="col-sm-2 control-label">Describe Your Problem</label>
+                            <div class="col-sm-10">
+                                <textarea name="problem_description" class="form-control" rows="4" placeholder="Describe what is happening to you..." required></textarea>
+                            </div>
+                        </div>
 
+                        <!-- Gender -->
                         <div class="form-group">
                             <label class="col-sm-2 control-label">Gender</label>
                             <div class="col-sm-2">
@@ -140,6 +188,7 @@
                             </div>
                         </div>
 
+                        <!-- Age -->
                         <div class="form-group">
                             <label class="col-sm-2 control-label">Age</label>
                             <div class="col-sm-10">
@@ -147,6 +196,7 @@
                             </div>
                         </div>
 
+                        <!-- Blood Group -->
                         <div class="form-group">
                             <label class="col-sm-2 control-label">Blood Group</label>
                             <div class="col-sm-2">

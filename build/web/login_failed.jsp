@@ -74,7 +74,9 @@
 						</form>
 					</div>
 		<a href="register_patient.jsp" style="text-align:Center;font-weight:bold;font-size:120%;padding: 0 2%">Register As Patient</a>						
-				</div>
+		                <a href="register_doctor.jsp" style="text-align:Center;font-weight:bold;font-size:120%;padding: 0 2%">Register As Doctor</a>
+		
+                                </div>
 				<div style="text-align:center;font-weight:bold;color:red">Login Failed.Check Username or Password.</div>
 			</div>				
 		</div>
