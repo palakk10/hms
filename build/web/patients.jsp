@@ -2,10 +2,123 @@
 <%@page import="java.sql.*"%>
 <html lang="en">
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        /* Compact spacing for Add Patient form fields */
+        #adddoctor .form-group {
+            margin-bottom: 2px !important;
+        }
+        #adddoctor .panel-body {
+            padding: 5px !important;
+        }
+        #adddoctor .control-label {
+            padding-right: 5px;
+        }
+        /* Position Add Patient tab dynamically */
+        #adddoctor {
+            position: absolute !important;
+            left: 0;
+            right: 0;
+            margin: 0 !important;
+            padding: 5px !important;
+            background-color: #f0f8ff;
+            z-index: 1000;
+        }
+        /* Minimize all top spacing */
+        .panel, .panel-body, .tab-content, .maincontent, .contentinside, .row {
+            margin: 0 !important;
+            padding: 0 !important;
+        }
+        /* Override maincontent */
+        .maincontent {
+            position: relative !important;
+            height: auto !important;
+            min-height: 100vh !important;
+            border: 1px solid red !important;
+        }
+        /* Override contentinside */
+        .contentinside {
+            border: 1px solid green !important;
+        }
+        /* Counter potential header/menu offsets */
+        .header, .navbar, .nav-tabs, .panel-heading {
+            margin: 0 !important;
+            padding: 0 !important;
+        }
+    </style>
     <script>
         function confirmDelete() {
             return confirm("Do You Really Want to Delete Patient?");
         }
+        document.addEventListener('DOMContentLoaded', function() {
+            const addPatientForm = document.querySelector('#addPatientForm');
+            if (addPatientForm) {
+                addPatientForm.addEventListener('submit', function(e) {
+                    const phone = document.getElementById('phone').value.trim();
+                    const pincode = document.getElementById('pincode').value.trim();
+                    const pwd = document.getElementById('pwd').value.trim();
+                    const street = document.getElementById('street').value.trim();
+                    const area = document.getElementById('area').value.trim();
+                    const city = document.getElementById('city').value.trim();
+                    const state = document.getElementById('state').value.trim();
+                    if (!phone.match(/^\d{10}$/)) {
+                        alert("Phone must be exactly 10 digits.");
+                        e.preventDefault();
+                    } else if (!pincode.match(/^\d{6}$/)) {
+                        alert("Pincode must be exactly 6 digits.");
+                        e.preventDefault();
+                    } else if (!pwd || pwd.length < 8) {
+                        alert("Password must be at least 8 characters.");
+                        e.preventDefault();
+                    } else if (!street) {
+                        alert("Street cannot be empty.");
+                        e.preventDefault();
+                    } else if (!area) {
+                        alert("Area cannot be empty.");
+                        e.preventDefault();
+                    } else if (!city) {
+                        alert("City cannot be empty.");
+                        e.preventDefault();
+                    } else if (!state) {
+                        alert("State cannot be empty.");
+                        e.preventDefault();
+                    }
+                });
+            }
+            const addDoctorSection = document.querySelector('#adddoctor');
+            const header = document.querySelector('.header');
+            const navbar = document.querySelector('.navbar');
+            const panelHeading = document.querySelector('.panel-heading');
+            const navTabs = document.querySelector('.nav-tabs');
+            let totalOffset = 0;
+            if (header) totalOffset += header.offsetHeight;
+            if (navbar) totalOffset += navbar.offsetHeight;
+            if (panelHeading) totalOffset += panelHeading.offsetHeight;
+            if (navTabs) totalOffset += navTabs.offsetHeight;
+            totalOffset += 5;
+            if (addDoctorSection) {
+                addDoctorSection.style.top = totalOffset + 'px';
+            }
+            console.log('Header height:', header?.offsetHeight, 
+                       'Navbar height:', navbar?.offsetHeight, 
+                       'Panel-heading height:', panelHeading?.offsetHeight, 
+                       'Nav-tabs height:', navTabs?.offsetHeight, 
+                       'Total offset:', totalOffset);
+            const addPatientTab = document.querySelector('a[href="#adddoctor"]');
+            if (addPatientTab) {
+                addPatientTab.addEventListener('shown.bs.tab', function() {
+                    const scrollPosition = addDoctorSection.getBoundingClientRect().top + window.pageYOffset - totalOffset;
+                    window.scrollTo({
+                        top: scrollPosition,
+                        behavior: 'smooth'
+                    });
+                    console.log('Scrolling to:', scrollPosition, 
+                               'AddDoctor top:', addDoctorSection.getBoundingClientRect().top, 
+                               'Page Y offset:', window.pageYOffset);
+                });
+            }
+        });
     </script>
     <script src="validation.js"></script>
 </head>
@@ -13,20 +126,15 @@
 <body>
     <div class="row">
         <%@include file="menu.jsp"%>
-        <!---- Content Area Start  -------->
         <div class="col-md-10 maincontent">
-            <!----------------   Menu Tab   --------------->
             <div class="panel panel-default contentinside">
                 <div class="panel-heading">Manage Patient</div>
-                <!----------------   Panel body Start   --------------->
                 <div class="panel-body">
                     <ul class="nav nav-tabs doctor">
-                        <li role="presentation"><a href="#doctorlist">Patient List</a></li>
-                        <li role="presentation"><a href="#adddoctor">Add Patient</a></li>
+                        <li role="presentation" class="active"><a href="#doctorlist" data-toggle="tab">Patient List</a></li>
+                        <li role="presentation"><a href="#adddoctor" data-toggle="tab">Add Patient</a></li>
                     </ul>
-
-                    <!----------------   Display Patients Data List Start  --------------->
-                    <div id="doctorlist" class="switchgroup">
+                    <div id="doctorlist" class="tab-pane fade in active">
                         <table class="table table-bordered table-hover">
                             <tr class="active">
                                 <td>#</td>
@@ -40,13 +148,18 @@
                                 <td>Room No</td>
                                 <td>Bed No</td>
                                 <td>Observed By</td>
-                                <td>Address</td>
+                                <td>Street</td>
+                                <td>Area</td>
+                                <td>City</td>
+                                <td>State</td>
+                                <td>Pincode</td>
+                                <td>Country</td>
                                 <td>Options</td>
                             </tr>
                             <%
                                 Connection c = (Connection) application.getAttribute("connection");
                                 PreparedStatement ps = c.prepareStatement(
-                                    "SELECT p.ID, p.PNAME, p.GENDER, p.AGE, p.BGROUP, p.PHONE, p.REA_OF_VISIT, p.ROOM_NO, p.BED_NO, p.DOCTOR_ID, d.NAME AS DOCTOR_NAME, p.DATE_AD, p.EMAIL, CONCAT(p.STREET, ', ', p.AREA, ', ', p.CITY, ', ', p.STATE, ', ', p.COUNTRY, ', ', p.PINCODE) AS FULL_ADDRESS FROM PATIENT_INFO p LEFT JOIN DOCTOR_INFO d ON p.DOCTOR_ID = d.ID",
+                                    "SELECT p.ID, p.PNAME, p.GENDER, p.AGE, p.BGROUP, p.PHONE, p.REA_OF_VISIT, p.ROOM_NO, p.BED_NO, p.DOCTOR_ID, d.NAME AS DOCTOR_NAME, p.DATE_AD, p.EMAIL, p.STREET, p.AREA, p.CITY, p.STATE, p.PINCODE, p.COUNTRY FROM PATIENT_INFO p LEFT JOIN DOCTOR_INFO d ON p.DOCTOR_ID = d.ID",
                                     ResultSet.TYPE_SCROLL_SENSITIVE, ResultSet.CONCUR_UPDATABLE
                                 );
                                 ResultSet rs = ps.executeQuery();
@@ -62,7 +175,12 @@
                                     int bed_no = rs.getInt("BED_NO");
                                     String doc_name = rs.getString("DOCTOR_NAME") != null ? rs.getString("DOCTOR_NAME") : "Not Assigned";
                                     String admit_date = rs.getString("DATE_AD");
-                                    String full_address = rs.getString("FULL_ADDRESS");
+                                    String street = rs.getString("STREET");
+                                    String area = rs.getString("AREA");
+                                    String city = rs.getString("CITY");
+                                    String state = rs.getString("STATE");
+                                    String pincode = rs.getString("PINCODE");
+                                    String country = rs.getString("COUNTRY");
                                     pageContext.setAttribute("currentDoctorId", rs.getInt("DOCTOR_ID"));
                             %>
                             <tr>
@@ -77,7 +195,12 @@
                                 <td><%=room_no%></td>
                                 <td><%=bed_no%></td>
                                 <td><%=doc_name%></td>
-                                <td><%=full_address%></td>
+                                <td><%=street != null ? street : ""%></td>
+                                <td><%=area != null ? area : ""%></td>
+                                <td><%=city != null ? city : ""%></td>
+                                <td><%=state != null ? state : ""%></td>
+                                <td><%=pincode != null ? pincode : ""%></td>
+                                <td><%=country != null ? country : ""%></td>
                                 <td>
                                     <a href="#"><button type="button" class="btn btn-primary" data-toggle="modal" data-target="#myModal<%=id%>"><span class="glyphicon glyphicon-wrench" aria-hidden="true"></span></button></a>
                                     <a href="delete_patient_validation.jsp?patientId=<%=id%>&roomNo=<%=room_no%>&bedNo=<%=bed_no%>" onclick="return confirmDelete()" class="btn btn-danger"><span class="glyphicon glyphicon-trash" aria-hidden="true"></span></a>
@@ -90,13 +213,9 @@
                             %>
                         </table>
                     </div>
-                    <!----------------   Display Patient Data List Ends  --------------->
-
-                    <!------ Patient Edit Info Modal Start Here ---------->
                     <%
-                        // Re-execute query for edit modals to avoid cursor issues
                         PreparedStatement psModal = c.prepareStatement(
-                            "SELECT p.ID, p.PNAME, p.GENDER, p.AGE, p.BGROUP, p.PHONE, p.REA_OF_VISIT, p.ROOM_NO, p.BED_NO, p.DOCTOR_ID, d.NAME AS DOCTOR_NAME, p.DATE_AD, p.EMAIL, CONCAT(p.STREET, ', ', p.AREA, ', ', p.CITY, ', ', p.STATE, ', ', p.COUNTRY, ', ', p.PINCODE) AS FULL_ADDRESS FROM PATIENT_INFO p LEFT JOIN DOCTOR_INFO d ON p.DOCTOR_ID = d.ID",
+                            "SELECT p.ID, p.PNAME, p.GENDER, p.AGE, p.BGROUP, p.PHONE, p.REA_OF_VISIT, p.ROOM_NO, p.BED_NO, p.DOCTOR_ID, d.NAME AS DOCTOR_NAME, p.DATE_AD, p.EMAIL, p.STREET, p.AREA, p.CITY, p.STATE, p.PINCODE, p.COUNTRY, p.PASSWORD FROM PATIENT_INFO p LEFT JOIN DOCTOR_INFO d ON p.DOCTOR_ID = d.ID",
                             ResultSet.TYPE_SCROLL_SENSITIVE, ResultSet.CONCUR_UPDATABLE
                         );
                         ResultSet rsModal = psModal.executeQuery();
@@ -113,7 +232,13 @@
                             int doctorId = rsModal.getInt("DOCTOR_ID");
                             String admit_date = rsModal.getString("DATE_AD");
                             String email = rsModal.getString("EMAIL");
-                            String full_address = rsModal.getString("FULL_ADDRESS");
+                            String street = rsModal.getString("STREET");
+                            String area = rsModal.getString("AREA");
+                            String city = rsModal.getString("CITY");
+                            String state = rsModal.getString("STATE");
+                            String pincode = rsModal.getString("PINCODE");
+                            String country = rsModal.getString("COUNTRY");
+                            String pwd = rsModal.getString("PASSWORD");
                             pageContext.setAttribute("currentDoctorId", doctorId);
                     %>
                     <div class="modal fade" id="myModal<%=id%>" tabindex="-1" role="dialog" aria-labelledby="myModalLabel">
@@ -136,37 +261,73 @@
                                                 <div class="form-group">
                                                     <label class="col-sm-2 control-label">Name</label>
                                                     <div class="col-sm-10">
-                                                        <input type="text" class="form-control" name="patientname" value="<%=name%>" placeholder="Name">
+                                                        <input type="text" class="form-control" name="patientname" value="<%=name%>" placeholder="Name" required>
                                                     </div>
                                                 </div>
                                                 <div class="form-group">
                                                     <label class="col-sm-2 control-label">Email</label>
                                                     <div class="col-sm-10">
-                                                        <input type="email" class="form-control" name="email" value="<%=email%>" placeholder="Email">
+                                                        <input type="email" class="form-control" name="email" value="<%=email%>" placeholder="Email" required>
                                                     </div>
                                                 </div>
                                                 <div class="form-group">
-                                                    <label class="col-sm-2 control-label">Address</label>
+                                                    <label class="col-sm-2 control-label">Password</label>
                                                     <div class="col-sm-10">
-                                                        <input type="text" class="form-control" name="add" value="<%=full_address%>" placeholder="Address">
+                                                        <input type="password" class="form-control" name="pwd" value="<%=pwd != null ? pwd : ""%>" placeholder="Password" required>
+                                                    </div>
+                                                </div>
+                                                <div class="form-group">
+                                                    <label class="col-sm-2 control-label">Street</label>
+                                                    <div class="col-sm-10">
+                                                        <input type="text" class="form-control" name="street" value="<%=street != null ? street : ""%>" placeholder="Street" required>
+                                                    </div>
+                                                </div>
+                                                <div class="form-group">
+                                                    <label class="col-sm-2 control-label">Area</label>
+                                                    <div class="col-sm-10">
+                                                        <input type="text" class="form-control" name="area" value="<%=area != null ? area : ""%>" placeholder="Area" required>
+                                                    </div>
+                                                </div>
+                                                <div class="form-group">
+                                                    <label class="col-sm-2 control-label">City</label>
+                                                    <div class="col-sm-10">
+                                                        <input type="text" class="form-control" name="city" value="<%=city != null ? city : ""%>" placeholder="City" required>
+                                                    </div>
+                                                </div>
+                                                <div class="form-group">
+                                                    <label class="col-sm-2 control-label">State</label>
+                                                    <div class="col-sm-10">
+                                                        <input type="text" class="form-control" name="state" value="<%=state != null ? state : ""%>" placeholder="State" required>
+                                                    </div>
+                                                </div>
+                                                <div class="form-group">
+                                                    <label class="col-sm-2 control-label">Pincode</label>
+                                                    <div class="col-sm-10">
+                                                        <input type="text" class="form-control" name="pincode" value="<%=pincode != null ? pincode : ""%>" placeholder="Pincode" required>
+                                                    </div>
+                                                </div>
+                                                <div class="form-group">
+                                                    <label class="col-sm-2 control-label">Country</label>
+                                                    <div class="col-sm-10">
+                                                        <input type="text" class="form-control" name="country" value="<%=country != null ? country : ""%>" placeholder="Country">
                                                     </div>
                                                 </div>
                                                 <div class="form-group">
                                                     <label class="col-sm-2 control-label">Phone</label>
                                                     <div class="col-sm-10">
-                                                        <input type="text" class="form-control" name="phone" value="<%=phone%>" placeholder="Phone">
+                                                        <input type="text" class="form-control" name="phone" value="<%=phone%>" placeholder="Phone" required>
                                                     </div>
                                                 </div>
                                                 <div class="form-group">
                                                     <label class="col-sm-2 control-label">Reason Of Visit</label>
                                                     <div class="col-sm-10">
-                                                        <input type="text" class="form-control" name="rov" value="<%=rov%>" placeholder="Reason Of Visit">
+                                                        <input type="text" class="form-control" name="rov" value="<%=rov%>" placeholder="Reason Of Visit" required>
                                                     </div>
                                                 </div>
                                                 <div class="form-group">
                                                     <label class="col-sm-2 control-label">Room Number</label>
                                                     <div class="col-sm-10">
-                                                        <select class="form-control" name="roomNo" id="roomNo<%=id%>" onchange="retrieveBeds2('<%=id%>')">
+                                                        <select class="form-control" name="roomNo" id="roomNo<%=id%>" onchange="retrieveBeds2('<%=id%>')" required>
                                                             <option selected="selected"><%=room_no%></option>
                                                             <%
                                                                 PreparedStatement ps1 = c.prepareStatement("SELECT DISTINCT room_no FROM room_info", ResultSet.TYPE_SCROLL_SENSITIVE, ResultSet.CONCUR_UPDATABLE);
@@ -186,15 +347,15 @@
                                                 <div class="form-group">
                                                     <label class="col-sm-2 control-label">Bed No.</label>
                                                     <div class="col-sm-10" id="beds<%=id%>">
-                                                        <select class="form-control" name="bed_no">
+                                                        <select class="form-control" name="bed_no" required>
                                                             <option selected="selected"><%=bed_no%></option>
                                                         </select>
                                                     </div>
                                                 </div>
                                                 <div class="form-group">
-                                                    <label class="col-sm-2 control-label">Reffered To</label>
+                                                    <label class="col-sm-2 control-label">Referred To</label>
                                                     <div class="col-sm-10">
-                                                        <select class="form-control" name="doct">
+                                                        <select class="form-control" name="doct" required>
                                                             <%
                                                                 PreparedStatement ps2 = c.prepareStatement("SELECT ID, NAME FROM DOCTOR_INFO", ResultSet.TYPE_SCROLL_SENSITIVE, ResultSet.CONCUR_UPDATABLE);
                                                                 ResultSet rs2 = ps2.executeQuery();
@@ -215,25 +376,37 @@
                                                 <div class="form-group">
                                                     <label class="col-sm-2 control-label">Gender</label>
                                                     <div class="col-sm-10">
-                                                        <input type="text" class="form-control" name="gender" value="<%=gender%>" placeholder="Gender">
+                                                        <select class="form-control" name="gender" required>
+                                                            <option value="Male" <%=gender.equals("Male") ? "selected" : ""%>>Male</option>
+                                                            <option value="Female" <%=gender.equals("Female") ? "selected" : ""%>>Female</option>
+                                                        </select>
                                                     </div>
                                                 </div>
                                                 <div class="form-group">
                                                     <label class="col-sm-2 control-label">Admission Date</label>
                                                     <div class="col-sm-10">
-                                                        <input type="text" class="form-control" name="admit_date" value="<%=admit_date%>" placeholder="Admission Date">
+                                                        <input type="date" class="form-control" name="admit_date" value="<%=admit_date%>" placeholder="Admission Date" required>
                                                     </div>
                                                 </div>
                                                 <div class="form-group">
                                                     <label class="col-sm-2 control-label">Age</label>
                                                     <div class="col-sm-10">
-                                                        <input type="text" class="form-control" name="age" value="<%=age%>" placeholder="Age">
+                                                        <input type="number" class="form-control" name="age" value="<%=age%>" placeholder="Age" required>
                                                     </div>
                                                 </div>
                                                 <div class="form-group">
                                                     <label class="col-sm-2 control-label">Blood Group</label>
                                                     <div class="col-sm-10">
-                                                        <input type="text" class="form-control" name="bgroup" value="<%=bgroup%>" placeholder="Blood Group">
+                                                        <select class="form-control" name="bgroup" required>
+                                                            <option value="A+" <%=bgroup.equals("A+") ? "selected" : ""%>>A+</option>
+                                                            <option value="A-" <%=bgroup.equals("A-") ? "selected" : ""%>>A-</option>
+                                                            <option value="B+" <%=bgroup.equals("B+") ? "selected" : ""%>>B+</option>
+                                                            <option value="B-" <%=bgroup.equals("B-") ? "selected" : ""%>>B-</option>
+                                                            <option value="AB+" <%=bgroup.equals("AB+") ? "selected" : ""%>>AB+</option>
+                                                            <option value="AB-" <%=bgroup.equals("AB-") ? "selected" : ""%>>AB-</option>
+                                                            <option value="O+" <%=bgroup.equals("O+") ? "selected" : ""%>>O+</option>
+                                                            <option value="O-" <%=bgroup.equals("O-") ? "selected" : ""%>>O-</option>
+                                                        </select>
                                                     </div>
                                                 </div>
                                                 <div class="modal-footer">
@@ -252,60 +425,87 @@
                         psModal.close();
                         rsModal.close();
                     %>
-                    <!----------------   Modal ends here  --------------->
-
-                    <!----------------   Add Patient Start   --------------->
-                    <div id="adddoctor" class="switchgroup">
+                    <div id="adddoctor" class="tab-pane fade">
                         <div class="panel panel-default">
                             <div class="panel-body">
-                                <form class="form-horizontal" action="add_patient_validation.jsp">
+                                <form class="form-horizontal" action="add_patient_validation.jsp" method="post" id="addPatientForm">
                                     <div class="form-group">
-                                        <label class="col-sm-2 control-label">Patient Id:</label>
-                                        <div class="col-sm-10">
+                                        <label class="col-sm-3 control-label">Patient Id:</label>
+                                        <div class="col-sm-9">
                                             <input type="number" class="form-control" name="patientid" placeholder="unique_id auto generated" readonly>
                                         </div>
                                     </div>
                                     <div class="form-group">
-                                        <label class="col-sm-2 control-label">Name</label>
-                                        <div class="col-sm-10">
-                                            <input type="text" class="form-control" name="patientname" placeholder="Name">
+                                        <label class="col-sm-3 control-label">Name</label>
+                                        <div class="col-sm-9">
+                                            <input type="text" class="form-control" name="patientname" placeholder="Name" required>
                                         </div>
                                     </div>
                                     <div class="form-group">
-                                        <label class="col-sm-2 control-label">Email</label>
-                                        <div class="col-sm-10">
-                                            <input type="email" class="form-control" name="email" placeholder="Email">
+                                        <label class="col-sm-3 control-label">Email</label>
+                                        <div class="col-sm-9">
+                                            <input type="email" class="form-control" name="email" placeholder="Email" required>
                                         </div>
                                     </div>
                                     <div class="form-group">
-                                        <label class="col-sm-2 control-label">Password</label>
-                                        <div class="col-sm-10">
-                                            <input type="password" class="form-control" name="pwd" placeholder="Password">
+                                        <label class="col-sm-3 control-label">Password</label>
+                                        <div class="col-sm-9">
+                                            <input type="password" class="form-control" name="pwd" id="pwd" placeholder="Password" required>
                                         </div>
                                     </div>
                                     <div class="form-group">
-                                        <label class="col-sm-2 control-label">Address</label>
-                                        <div class="col-sm-10">
-                                            <input type="text" class="form-control" name="add" placeholder="Address">
+                                        <label class="col-sm-3 control-label">Street</label>
+                                        <div class="col-sm-9">
+                                            <input type="text" class="form-control" name="street" id="street" placeholder="Street" required>
                                         </div>
                                     </div>
                                     <div class="form-group">
-                                        <label class="col-sm-2 control-label">Phone</label>
-                                        <div class="col-sm-10">
-                                            <input type="text" class="form-control" name="phone" placeholder="Phone No.">
+                                        <label class="col-sm-3 control-label">Area</label>
+                                        <div class="col-sm-9">
+                                            <input type="text" class="form-control" name="area" id="area" placeholder="Area" required>
                                         </div>
                                     </div>
                                     <div class="form-group">
-                                        <label class="col-sm-2 control-label">Reason Of Visit</label>
-                                        <div class="col-sm-10">
-                                            <input type="text" class="form-control" name="rov" placeholder="Reason Of Visit">
+                                        <label class="col-sm-3 control-label">City</label>
+                                        <div class="col-sm-9">
+                                            <input type="text" class="form-control" name="city" id="city" placeholder="City" required>
                                         </div>
                                     </div>
                                     <div class="form-group">
-                                        <label class="col-sm-2 control-label">Room No</label>
-                                        <div class="col-sm-10">
-                                            <select class="form-control" name="roomNo" id="roomNo" onchange="retrieveBeds()">
-                                                <option selected="selected">Select Room</option>
+                                        <label class="col-sm-3 control-label">State</label>
+                                        <div class="col-sm-9">
+                                            <input type="text" class="form-control" name="state" id="state" placeholder="State" required>
+                                        </div>
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="col-sm-3 control-label">Pincode</label>
+                                        <div class="col-sm-9">
+                                            <input type="text" class="form-control" name="pincode" id="pincode" placeholder="Pincode" required>
+                                        </div>
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="col-sm-3 control-label">Country</label>
+                                        <div class="col-sm-9">
+                                            <input type="text" class="form-control" name="country" placeholder="Country">
+                                        </div>
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="col-sm-3 control-label">Phone</label>
+                                        <div class="col-sm-9">
+                                            <input type="text" class="form-control" name="phone" id="phone" placeholder="Phone No." required>
+                                        </div>
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="col-sm-3 control-label">Reason</label>
+                                        <div class="col-sm-9">
+                                            <input type="text" class="form-control" name="rov" placeholder="Reason Of Visit" required>
+                                        </div>
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="col-sm-3 control-label">Room No</label>
+                                        <div class="col-sm-9">
+                                            <select class="form-control" name="roomNo" id="roomNo" onchange="retrieveBeds()" required>
+                                                <option value="">Select Room</option>
                                                 <%
                                                     PreparedStatement ps3 = c.prepareStatement("SELECT DISTINCT room_no FROM room_info", ResultSet.TYPE_SCROLL_SENSITIVE, ResultSet.CONCUR_UPDATABLE);
                                                     ResultSet rs3 = ps3.executeQuery();
@@ -322,17 +522,17 @@
                                         </div>
                                     </div>
                                     <div class="form-group">
-                                        <label class="col-sm-2 control-label">Bed No.</label>
-                                        <div class="col-sm-10" id="beds">
-                                            <select class="form-control" name="bed_no">
-                                                <option selected="selected">Select Bed</option>
+                                        <label class="col-sm-3 control-label">Bed No.</label>
+                                        <div class="col-sm-9" id="beds">
+                                            <select class="form-control" name="bed_no" required>
+                                                <option value="">Select Bed</option>
                                             </select>
                                         </div>
                                     </div>
                                     <div class="form-group">
-                                        <label class="col-sm-2 control-label">Reffered To</label>
-                                        <div class="col-sm-10">
-                                            <select class="form-control" name="doct">
+                                        <label class="col-sm-3 control-label">Doctor</label>
+                                        <div class="col-sm-9">
+                                            <select class="form-control" name="doct" required>
                                                 <option value="">Select Doctor</option>
                                                 <%
                                                     PreparedStatement ps4 = c.prepareStatement("SELECT ID, NAME FROM DOCTOR_INFO", ResultSet.TYPE_SCROLL_SENSITIVE, ResultSet.CONCUR_UPDATABLE);
@@ -351,43 +551,43 @@
                                         </div>
                                     </div>
                                     <div class="form-group">
-                                        <label class="col-sm-2 control-label">Sex</label>
-                                        <div class="col-sm-2">
-                                            <select class="form-control" name="gender">
-                                                <option>Male</option>
-                                                <option>Female</option>
+                                        <label class="col-sm-3 control-label">Sex</label>
+                                        <div class="col-sm-9">
+                                            <select class="form-control" name="gender" required>
+                                                <option value="Male">Male</option>
+                                                <option value="Female">Female</option>
                                             </select>
                                         </div>
                                     </div>
                                     <div class="form-group">
-                                        <label class="col-sm-2 control-label">Admission Date</label>
-                                        <div class="col-sm-10">
-                                            <input type="date" class="form-control" name="joindate" placeholder="Admission date">
+                                        <label class="col-sm-3 control-label">Admit Date</label>
+                                        <div class="col-sm-9">
+                                            <input type="date" class="form-control" name="joindate" placeholder="Admission date" required>
                                         </div>
                                     </div>
                                     <div class="form-group">
-                                        <label class="col-sm-2 control-label">Age</label>
-                                        <div class="col-sm-10">
-                                            <input type="text" class="form-control" name="age" placeholder="Age">
+                                        <label class="col-sm-3 control-label">Age</label>
+                                        <div class="col-sm-9">
+                                            <input type="number" class="form-control" name="age" placeholder="Age" required>
                                         </div>
                                     </div>
                                     <div class="form-group">
-                                        <label class="col-sm-2 control-label">Blood Group</label>
-                                        <div class="col-sm-2">
-                                            <select class="form-control" name="bgroup">
-                                                <option>A+</option>
-                                                <option>A-</option>
-                                                <option>B+</option>
-                                                <option>B-</option>
-                                                <option>AB+</option>
-                                                <option>AB-</option>
-                                                <option>O+</option>
-                                                <option>O-</option>
+                                        <label class="col-sm-3 control-label">Blood Group</label>
+                                        <div class="col-sm-9">
+                                            <select class="form-control" name="bgroup" required>
+                                                <option value="A+">A+</option>
+                                                <option value="A-">A-</option>
+                                                <option value="B+">B+</option>
+                                                <option value="B-">B-</option>
+                                                <option value="AB+">AB+</option>
+                                                <option value="AB-">AB-</option>
+                                                <option value="O+">O+</option>
+                                                <option value="O-">O-</option>
                                             </select>
                                         </div>
                                     </div>
                                     <div class="form-group">
-                                        <div class="col-sm-offset-2 col-sm-10">
+                                        <div class="col-sm-offset-3 col-sm-9">
                                             <button type="submit" class="btn btn-primary">Add Patient</button>
                                         </div>
                                     </div>
@@ -395,9 +595,7 @@
                             </div>
                         </div>
                     </div>
-                    <!----------------   Add Patients Ends   --------------->
                 </div>
-                <!----------------   Panel body Ends   --------------->
             </div>
         </div>
     </div>

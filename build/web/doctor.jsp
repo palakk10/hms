@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <%@page import="java.sql.*"%>
 <html lang="en">
@@ -29,7 +30,10 @@
                                     <td>Doctor ID</td>
                                     <td>Doctor Name</td>
                                     <td>Email</td>
+                                    <td>Street</td>
+                                    <td>Area</td>
                                     <td>City</td>
+                                    <td>State</td>
                                     <td>Pincode</td>
                                     <td>Phone No.</td>
                                     <td>Department</td>
@@ -39,7 +43,7 @@
                                     int deptId;
                                     String deptName;
                                     int id;
-                                    String name, email, pwd, city, pincode, phone, dept;
+                                    String name, email, pwd, street, area, city, state, pincode, phone, dept;
                                     PreparedStatement ps;
                                     ResultSet rs;
                                 %>
@@ -47,7 +51,7 @@
                                     Connection c = (Connection) application.getAttribute("connection");
                                     try {
                                         PreparedStatement ps = c.prepareStatement(
-                                            "SELECT di.ID, di.NAME, di.EMAIL, di.CITY, di.PINCODE, di.PHONE, d.NAME AS DEPT_NAME, di.PASSWORD FROM doctor_info di JOIN department d ON di.DEPT_ID = d.ID",
+                                            "SELECT di.ID, di.NAME, di.EMAIL, di.STREET, di.AREA, di.CITY, di.STATE, di.PINCODE, di.PHONE, d.NAME AS DEPT_NAME, di.PASSWORD FROM doctor_info di JOIN department d ON di.DEPT_ID = d.ID",
                                             ResultSet.TYPE_SCROLL_SENSITIVE, ResultSet.CONCUR_UPDATABLE
                                         );
                                         rs = ps.executeQuery();
@@ -55,16 +59,22 @@
                                             id = rs.getInt(1);
                                             name = rs.getString(2);
                                             email = rs.getString(3);
-                                            city = rs.getString(4);
-                                            pincode = rs.getString(5);
-                                            phone = rs.getString(6);
-                                            dept = rs.getString(7);
+                                            street = rs.getString(4);
+                                            area = rs.getString(5);
+                                            city = rs.getString(6);
+                                            state = rs.getString(7);
+                                            pincode = rs.getString(8);
+                                            phone = rs.getString(9);
+                                            dept = rs.getString(10);
                                 %>
                                 <tr>
                                     <td><%=id%></td>
                                     <td><%=name%></td>
                                     <td><%=email%></td>
+                                    <td><%=street%></td>
+                                    <td><%=area%></td>
                                     <td><%=city%></td>
+                                    <td><%=state%></td>
                                     <td><%=pincode%></td>
                                     <td><%=phone%></td>
                                     <td><%=dept%></td>
@@ -90,11 +100,14 @@
                                     id = rs.getInt(1);
                                     name = rs.getString(2);
                                     email = rs.getString(3);
-                                    city = rs.getString(4);
-                                    pincode = rs.getString(5);
-                                    phone = rs.getString(6);
-                                    dept = rs.getString(7);
-                                    pwd = rs.getString(8);
+                                    street = rs.getString(4);
+                                    area = rs.getString(5);
+                                    city = rs.getString(6);
+                                    state = rs.getString(7);
+                                    pincode = rs.getString(8);
+                                    phone = rs.getString(9);
+                                    dept = rs.getString(10);
+                                    pwd = rs.getString(11);
                                     System.out.println("Loading modal for doctor ID " + id + ", pwd=" + (pwd != null ? "[PROTECTED]" : "null"));
                         %>
                         <div class="modal fade" id="myModal<%=id%>" tabindex="-1" role="dialog" aria-labelledby="myModalLabel">
@@ -133,9 +146,27 @@
                                                         </div>
                                                     </div>
                                                     <div class="form-group">
+                                                        <label class="col-sm-2 control-label">Street</label>
+                                                        <div class="col-sm-10">
+                                                            <input type="text" class="form-control" name="street" value="<%=street%>" placeholder="Street">
+                                                        </div>
+                                                    </div>
+                                                    <div class="form-group">
+                                                        <label class="col-sm-2 control-label">Area</label>
+                                                        <div class="col-sm-10">
+                                                            <input type="text" class="form-control" name="area" value="<%=area%>" placeholder="Area">
+                                                        </div>
+                                                    </div>
+                                                    <div class="form-group">
                                                         <label class="col-sm-2 control-label">City</label>
                                                         <div class="col-sm-10">
                                                             <input type="text" class="form-control" name="city" value="<%=city%>" placeholder="City">
+                                                        </div>
+                                                    </div>
+                                                    <div class="form-group">
+                                                        <label class="col-sm-2 control-label">State</label>
+                                                        <div class="col-sm-10">
+                                                            <input type="text" class="form-control" name="state" value="<%=state%>" placeholder="State">
                                                         </div>
                                                     </div>
                                                     <div class="form-group">
@@ -231,9 +262,27 @@
                                             </div>
                                         </div>
                                         <div class="form-group">
+                                            <label class="col-sm-2 control-label">Street</label>
+                                            <div class="col-sm-10">
+                                                <input type="text" class="form-control" name="street" placeholder="Street" required="required">
+                                            </div>
+                                        </div>
+                                        <div class="form-group">
+                                            <label class="col-sm-2 control-label">Area</label>
+                                            <div class="col-sm-10">
+                                                <input type="text" class="form-control" name="area" placeholder="Area" required="required">
+                                            </div>
+                                        </div>
+                                        <div class="form-group">
                                             <label class="col-sm-2 control-label">City</label>
                                             <div class="col-sm-10">
                                                 <input type="text" class="form-control" name="city" placeholder="City" required="required">
+                                            </div>
+                                        </div>
+                                        <div class="form-group">
+                                            <label class="col-sm-2 control-label">State</label>
+                                            <div class="col-sm-10">
+                                                <input type="text" class="form-control" name="state" placeholder="State" required="required">
                                             </div>
                                         </div>
                                         <div class="form-group">
@@ -305,3 +354,6 @@
     <script src="js/bootstrap.min.js"></script>
 </body>
 </html>
+```
+
+<x
