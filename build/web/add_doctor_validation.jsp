@@ -1,57 +1,111 @@
-<%@page import="java.sql.*" %>
+<%@page import="java.sql.*"%>
+<%@page contentType="text/html" pageEncoding="UTF-8"%>
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Add Doctor Validation</title>
+</head>
+<body>
+<% 
+    String doctname = request.getParameter("doctname");
+    String email = request.getParameter("email");
+    String pwd = request.getParameter("pwd");
+    String city = request.getParameter("city");
+    String pincode = request.getParameter("pincode");
+    String phone = request.getParameter("phone");
+    String dept = request.getParameter("dept");
 
+    System.out.println("Add Doctor Parameters: doctname=" + doctname + ", email=" + email + 
+                       ", pwd=[PROTECTED], city=" + city + ", pincode=" + pincode + 
+                       ", phone=" + phone + ", dept=" + dept);
 
-<%
+    Connection con = (Connection) application.getAttribute("connection");
+    try {
+        if (con == null) {
+            System.out.println("Error: Database connection is null");
+            session.setAttribute("error-message", "Error: Database connection is not established.");
+            response.sendRedirect("doctor.jsp");
+            return;
+        }
 
+        // Server-side validation
+        if (pwd == null || pwd.trim().length() < 8) {
+            System.out.println("Error: Password less than 8 characters");
+            session.setAttribute("error-message", "Error: Password must be at least 8 characters.");
+            response.sendRedirect("doctor.jsp");
+            return;
+        }
+        if (pincode == null || !pincode.matches("\\d{6}")) {
+            System.out.println("Error: Invalid pincode");
+            session.setAttribute("error-message", "Error: Pincode must be exactly 6 digits.");
+            response.sendRedirect("doctor.jsp");
+            return;
+        }
+        if (phone == null || !phone.matches("\\d{10}")) {
+            System.out.println("Error: Invalid phone");
+            session.setAttribute("error-message", "Error: Phone must be exactly 10 digits.");
+            response.sendRedirect("doctor.jsp");
+            return;
+        }
 
+        // Get DEPT_ID from department name
+        PreparedStatement psDept = con.prepareStatement("SELECT ID FROM department WHERE NAME = ?");
+        psDept.setString(1, dept);
+        ResultSet rsDept = psDept.executeQuery();
+        int deptId = 0;
+        if (rsDept.next()) {
+            deptId = rsDept.getInt("ID");
+            System.out.println("Found DEPT_ID: " + deptId + " for dept: " + dept);
+        } else {
+            System.out.println("Error: Department '" + dept + "' not found");
+            session.setAttribute("error-message", "Error: Department '" + dept + "' not found.");
+            response.sendRedirect("doctor.jsp");
+            return;
+        }
 
-        String doctid=request.getParameter("doctid");
+        // Simulate password hashing (replace with bcrypt in production)
+        String hashedPwd = pwd != null && !pwd.isEmpty() ? pwd : null;
+        System.out.println("Hashed password: " + (hashedPwd != null ? "[PROTECTED]" : "null"));
 
-	String doctname=request.getParameter("doctname");
+        // Insert into doctor_info
+        PreparedStatement ps = con.prepareStatement(
+            "INSERT INTO doctor_info (NAME, EMAIL, PASSWORD, CITY, PINCODE, PHONE, DEPT_ID, STREET, AREA, STATE, COUNTRY, GENDER, AGE) VALUES (?, ?, ?, ?, ?, ?, ?, NULL, NULL, NULL, NULL, NULL, NULL)"
+        );
+        ps.setString(1, doctname);
+        ps.setString(2, email);
+        ps.setString(3, hashedPwd);
+        ps.setString(4, city);
+        ps.setString(5, pincode);
+        ps.setString(6, phone);
+        ps.setInt(7, deptId);
 
-	String email=request.getParameter("email");
+        int i = ps.executeUpdate();
+        System.out.println("Insert result: " + i + " rows affected");
 
-	String pwd=request.getParameter("pwd");
-
-	String add=request.getParameter("add");
-
-	String phone=request.getParameter("phone");
-
-	String dept=request.getParameter("dept");
-
-
-        Connection con=(Connection)application.getAttribute("connection");
-        PreparedStatement ps=con.prepareStatement("insert into doctor_info(name,email,password,address,phone,deptname) values(?,?,?,?,?,?)");
-  
-      	ps.setString(1,doctname);
-      	ps.setString(2,email);
-     	ps.setString(3,pwd);
-     	ps.setString(4,add);
-     	ps.setString(5,phone);
-     	ps.setString(6,dept);
-
-	int i =ps.executeUpdate();
-  
-	if(i>0)
-
-	{
+        if (i > 0) {
+            session.setAttribute("success-message", "Doctor added successfully!");
+        } else {
+            session.setAttribute("error-message", "Error: Failed to add doctor.");
+        }
+        response.sendRedirect("doctor.jsp");
+    } catch (SQLException e) {
+        System.out.println("SQLException in add_doctor_validation.jsp: " + e.getMessage());
+        e.printStackTrace();
+        session.setAttribute("error-message", "Error: " + e.getMessage());
+        response.sendRedirect("doctor.jsp");
+    } catch (Exception e) {
+        System.out.println("Unexpected error in add_doctor_validation.jsp: " + e.getMessage());
+        e.printStackTrace();
+        session.setAttribute("error-message", "Unexpected error: " + e.getMessage());
+        response.sendRedirect("doctor.jsp");
+    } finally {
+        try {
+            if (con != null) con.commit();
+        } catch (SQLException e) {
+            System.out.println("Error committing transaction: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
 %>
-<div style="text-align:center;margin-top:25%">
-<font color="green">
-<script type="text/javascript">
-function Redirect()
-{
-    window.location="doctor.jsp";
-}
-document.write("<h2>Doctor Added Successfully</h2><br><Br>");
-document.write("<h3>Redirecting you to home page....</h3>");
-setTimeout('Redirect()', 3000);
-</script>
-</font>
-</div>
-<%
-	}
-
-	ps.close();
-	con.commit();	
-%>
+</body>
+</html>
