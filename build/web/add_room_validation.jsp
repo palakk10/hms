@@ -1,35 +1,24 @@
 <%@page import="java.sql.*" %>
-
-
 <%
+    String roomNo = request.getParameter("roomNo");
+    String bedNo = request.getParameter("bedNo");
+    String status = request.getParameter("status");
+    String type = request.getParameter("type");
 
+    Connection con = (Connection)application.getAttribute("connection");
+    PreparedStatement ps = con.prepareStatement("INSERT INTO room_info (room_no, bed_no, status, type) VALUES (?, ?, ?, ?)");
+    ps.setInt(1, Integer.parseInt(roomNo));
+    ps.setInt(2, Integer.parseInt(bedNo));
+    ps.setString(3, status);
+    ps.setString(4, type);
 
-
-        String roomNo=request.getParameter("roomNo");
-
-	String bedNo=request.getParameter("bedNo");
-
-	String status=request.getParameter("status");
-
-
-        Connection con=(Connection)application.getAttribute("connection");
-        PreparedStatement ps=con.prepareStatement("insert into room_info values(?,?,?)");
-  
-      	ps.setInt(1,Integer.parseInt(roomNo));
-      	ps.setInt(2,Integer.parseInt(bedNo));
-      	ps.setString(3,status);
-
-	int i =ps.executeUpdate();
-  
-	if(i>0)
-
-	{
+    int i = ps.executeUpdate();
+    if (i > 0) {
 %>
 <div style="text-align:center;margin-top:35%">
 <font color="green">
 <script type="text/javascript">
-function Redirect()
-{
+function Redirect() {
     window.location="room.jsp";
 }
 document.write("<h2>Room with Bed Added Successfully</h2><br><Br>");
@@ -39,8 +28,6 @@ setTimeout('Redirect()', 3000);
 </font>
 </div>
 <%
-	}
-
-	ps.close();
-	con.commit();	
+    }
+    ps.close();
 %>
