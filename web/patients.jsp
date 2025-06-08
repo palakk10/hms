@@ -1,4 +1,3 @@
-
 <%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
 <%@ page import="java.sql.*" %>
 <!DOCTYPE html>
@@ -92,6 +91,38 @@
                         console.error('AJAX error:', textStatus, errorThrown);
                     },
                     cache: false // Prevent AJAX caching
+                });
+            } else {
+                bedSelect.html('<option value="">Select Bed</option>');
+                bedSelect.prop('disabled', true);
+            }
+        }
+
+        // Function to retrieve beds for edit modal
+        function retrieveBeds2(modalId) {
+            var roomNo = $('#roomNo' + modalId).val();
+            var bedSelect = $('#bedNo' + modalId);
+            bedSelect.prop('disabled', true).html('<option value="">Loading...</option>');
+            
+            if (roomNo) {
+                $.ajax({
+                    url: 'retrieve_beds_validation.jsp',
+                    type: 'POST',
+                    data: { roomNo: roomNo },
+                    success: function(data) {
+                        bedSelect.html(data);
+                        bedSelect.prop('disabled', false);
+                        if (bedSelect.find('option').length <= 1) {
+                            bedSelect.html('<option value="">No available beds</option>');
+                        }
+                    },
+                    error: function(jqXHR, textStatus, errorThrown) {
+                        bedSelect.html('<option value="">Error loading beds</option>');
+                        bedSelect.prop('disabled', true);
+                        alert('Error fetching beds: ' + textStatus);
+                        console.error('AJAX error:', textStatus, errorThrown);
+                    },
+                    cache: false
                 });
             } else {
                 bedSelect.html('<option value="">Select Bed</option>');
@@ -248,6 +279,7 @@
                                     <td>
                                         <a href="#"><button type="button" class="btn btn-primary" data-toggle="modal" data-target="#myModal<%=id%>"><span class="glyphicon glyphicon-wrench" aria-hidden="true"></span></button></a>
                                         <a href="delete_patient_validation.jsp?patientId=<%=id%>&roomNo=<%=room_no%>&bedNo=<%=bed_no%>" onclick="return confirmDelete()" class="btn btn-danger"><span class="glyphicon glyphicon-trash" aria-hidden="true"></span></a>
+                                        <a href="pathology.jsp?tab=adddoctor&patientId=<%=id%>&patientName=<%=java.net.URLEncoder.encode(name, "UTF-8")%>"><button type="button" class="btn btn-success"><span class="glyphicon glyphicon-plus" aria-hidden="true"></span> Add Pathology</button></a>
                                     </td>
                                 </tr>
                                 <%
@@ -382,7 +414,7 @@
                                                         <label class="col-sm-2 control-label">Room Number</label>
                                                         <div class="col-sm-10">
                                                             <select class="form-control" name="roomNo" id="roomNo<%=id%>" onchange="retrieveBeds2('<%=id%>')" required>
-                                                                <option selected="selected"><%=room_no%></option>
+                                                                <option value="<%=room_no%>" selected><%=room_no%></option>
                                                                 <%
                                                                     PreparedStatement ps1 = null;
                                                                     ResultSet rs1 = null;
@@ -391,9 +423,11 @@
                                                                         rs1 = ps1.executeQuery();
                                                                         while (rs1.next()) {
                                                                             int roomNo1 = rs1.getInt(1);
+                                                                            if (roomNo1 != room_no) {
                                                                 %>
                                                                 <option value="<%=roomNo1%>"><%=roomNo1%></option>
                                                                 <%
+                                                                            }
                                                                         }
                                                                     } finally {
                                                                         if (rs1 != null) try { rs1.close(); } catch (SQLException e) {}
@@ -406,8 +440,28 @@
                                                     <div class="form-group">
                                                         <label class="col-sm-2 control-label">Bed No.</label>
                                                         <div class="col-sm-10">
-                                                            <select class="form-control" name="bed_no" required>
-                                                                <option selected="selected"><%=bed_no%></option>
+                                                            <select class="form-control" name="bed_no" id="bedNo<%=id%>" required>
+                                                                <option value="<%=bed_no%>" selected><%=bed_no%></option>
+                                                                <%
+                                                                    PreparedStatement psBeds = null;
+                                                                    ResultSet rsBeds = null;
+                                                                    try {
+                                                                        psBeds = c.prepareStatement("SELECT BED_NO FROM room_info WHERE ROOM_NO = ? AND STATUS = 'Available' ORDER BY BED_NO", ResultSet.TYPE_SCROLL_SENSITIVE, ResultSet.CONCUR_UPDATABLE);
+                                                                        psBeds.setInt(1, room_no);
+                                                                        rsBeds = psBeds.executeQuery();
+                                                                        while (rsBeds.next()) {
+                                                                            int bedNo1 = rsBeds.getInt("BED_NO");
+                                                                            if (bedNo1 != bed_no) {
+                                                                %>
+                                                                <option value="<%=bedNo1%>"><%=bedNo1%></option>
+                                                                <%
+                                                                            }
+                                                                        }
+                                                                    } finally {
+                                                                        if (rsBeds != null) try { rsBeds.close(); } catch (SQLException e) {}
+                                                                        if (psBeds != null) try { psBeds.close(); } catch (SQLException e) {}
+                                                                    }
+                                                                %>
                                                             </select>
                                                         </div>
                                                     </div>
@@ -446,7 +500,7 @@
                                                             </select>
                                                         </div>
                                                     </div>
-                                                    <div class="form-game">
+                                                    <div class="form-group">
                                                         <label class="col-sm-2 control-label">Admission Date</label>
                                                         <div class="col-sm-10">
                                                             <input type="date" class="form-control" name="admit_date" value="<%=admit_date%>" placeholder="Admission Date" required>
@@ -624,7 +678,7 @@
                                                                 <option value="" disabled>No available rooms</option>
                                                                 <%
                                                             } else {
-                                                                rs3.beforeFirst();
+                                                                rs3.beforeFirst(); // Fixed: Changed from rs3.reset() to rs3.beforeFirst()
                                                                 while (rs3.next()) {
                                                                     int roomNo = rs3.getInt("ROOM_NO");
                                                                     %>
@@ -707,4 +761,3 @@
     </div>
 </body>
 </html>
-```
