@@ -1,216 +1,305 @@
-<%@page import="java.sql.*" %>
+
+<%@page import="java.sql.*, java.util.*" %>
 <%@page contentType="text/html" pageEncoding="UTF-8"%>
 <!DOCTYPE html>
 <html>
 <head>
+    <meta charset="UTF-8">
     <title>Add Patient Validation</title>
 </head>
 <body>
-<%
-    String pid = request.getParameter("patientid");
-    String pname = request.getParameter("patientname");
-    String email = request.getParameter("email");
-    String pwd = request.getParameter("pwd");
-    String street = request.getParameter("street");
-    String area = request.getParameter("area");
-    String city = request.getParameter("city");
-    String state = request.getParameter("state");
-    String pincode = request.getParameter("pincode");
-    String country = request.getParameter("country");
-    String phone = request.getParameter("phone");
-    String rov = request.getParameter("rov");
-    String roomNo = request.getParameter("roomNo");
-    String bedNo = request.getParameter("bed_no");
-    String doctId = request.getParameter("doct");
-    String gender = request.getParameter("gender");
-    String joindate = request.getParameter("joindate");
-    String age = request.getParameter("age");
-    String bgroup = request.getParameter("bgroup");
+    <div style="text-align:center;margin-top:35%">
+    <%
+        // Retrieve form parameters
+        String pid = request.getParameter("patientid");
+        String pname = request.getParameter("patientname");
+        String email = request.getParameter("email");
+        String pwd = request.getParameter("pwd");
+        String street = request.getParameter("street");
+        String area = request.getParameter("area");
+        String city = request.getParameter("city");
+        String state = request.getParameter("state");
+        String pincode = request.getParameter("pincode");
+        String country = request.getParameter("country");
+        String phone = request.getParameter("phone");
+        String rov = request.getParameter("rov");
+        String probDesc = request.getParameter("prob_desc");
+        String roomNo = request.getParameter("roomNo");
+        String bedNo = request.getParameter("bed_no"); // Matches patients.jsp
+        String doctId = request.getParameter("doct");
+        String gender = request.getParameter("gender");
+        String joindate = request.getParameter("joindate");
+        String age = request.getParameter("age");
+        String bgroup = request.getParameter("bgroup");
 
-    System.out.println("Add Patient Parameters: patientname=" + pname + ", email=" + email + 
-                       ", pwd=[PROTECTED], street=" + street + ", area=" + area + 
-                       ", city=" + city + ", state=" + state + ", pincode=" + pincode + 
-                       ", country=" + country + ", phone=" + phone + ", rov=" + rov + 
-                       ", roomNo=" + roomNo + ", bedNo=" + bedNo + ", doctId=" + doctId + 
-                       ", gender=" + gender + ", joindate=" + joindate + ", age=" + age + 
-                       ", bgroup=" + bgroup);
-
-    Connection con = (Connection) application.getAttribute("connection");
-    try {
-        if (con == null) {
-            System.out.println("Error: Database connection is null");
-            out.println("<h3 style='color:red;'>Error: Database connection not established.</h3>");
-            return;
-        }
-
-        // Server-side validation
-        if (pname == null || pname.trim().isEmpty()) {
-            out.println("<h3 style='color:red;'>Error: Patient name cannot be empty.</h3>");
-            return;
-        }
-        if (email == null || email.trim().isEmpty()) {
-            out.println("<h3 style='color:red;'>Error: Email cannot be empty.</h3>");
-            return;
-        }
-        if (pwd == null || pwd.trim().length() < 8) {
-            out.println("<h3 style='color:red;'>Error: Password must be at least 8 characters.</h3>");
-            return;
-        }
-        if (street == null || street.trim().isEmpty()) {
-            out.println("<h3 style='color:red;'>Error: Street cannot be empty.</h3>");
-            return;
-        }
-        if (area == null || area.trim().isEmpty()) {
-            out.println("<h3 style='color:red;'>Error: Area cannot be empty.</h3>");
-            return;
-        }
-        if (city == null || city.trim().isEmpty()) {
-            out.println("<h3 style='color:red;'>Error: City cannot be empty.</h3>");
-            return;
-        }
-        if (state == null || state.trim().isEmpty()) {
-            out.println("<h3 style='color:red;'>Error: State cannot be empty.</h3>");
-            return;
-        }
-        if (pincode == null || !pincode.matches("\\d{6}")) {
-            out.println("<h3 style='color:red;'>Error: Pincode must be exactly 6 digits.</h3>");
-            return;
-        }
-        if (phone == null || !phone.matches("\\d{10}")) {
-            out.println("<h3 style='color:red;'>Error: Phone must be exactly 10 digits.</h3>");
-            return;
-        }
-        if (rov == null || rov.trim().isEmpty()) {
-            out.println("<h3 style='color:red;'>Error: Reason of visit cannot be empty.</h3>");
-            return;
-        }
-        if (roomNo == null || roomNo.trim().isEmpty()) {
-            out.println("<h3 style='color:red;'>Error: Room number is required.</h3>");
-            return;
-        }
-        if (bedNo == null || bedNo.trim().isEmpty()) {
-            out.println("<h3 style='color:red;'>Error: Bed number is required.</h3>");
-            return;
-        }
-        if (doctId == null || doctId.trim().isEmpty()) {
-            out.println("<h3 style='color:red;'>Error: Doctor selection is required.</h3>");
-            return;
-        }
-        if (gender == null || gender.trim().isEmpty()) {
-            out.println("<h3 style='color:red;'>Error: Gender is required.</h3>");
-            return;
-        }
-        if (joindate == null || joindate.trim().isEmpty()) {
-            out.println("<h3 style='color:red;'>Error: Admission date is required.</h3>");
-            return;
-        }
-        if (age == null || age.trim().isEmpty()) {
-            out.println("<h3 style='color:red;'>Error: Age is required.</h3>");
-            return;
-        }
-        // Step 1: Get doctor ID
-        int doctorId = Integer.parseInt(doctId);
-        PreparedStatement ps = con.prepareStatement("SELECT ID FROM doctor_info WHERE ID = ?");
-        ps.setInt(1, doctorId);
-        ResultSet rs = ps.executeQuery();
-        if (!rs.next()) {
-            out.println("<h3 style='color:red;'>Doctor not found in the system. Please add the doctor first.</h3>");
-            rs.close();
-            ps.close();
-            return;
-        }
-        rs.close();
-        // Step 2: Check if Room + Bed combination exists and is available
-        ps = con.prepareStatement("SELECT status FROM room_info WHERE room_no = ? AND bed_no = ?");
-        ps.setInt(1, Integer.parseInt(roomNo));
-        ps.setInt(2, Integer.parseInt(bedNo));
-        rs = ps.executeQuery();
-        if (!rs.next()) {
-            out.println("<h3 style='color:red;'>Invalid Room or Bed. Please add this Room/Bed first.</h3>");
-            rs.close();
-            ps.close();
-            return;
-        } else if (rs.getString("status").equals("busy")) {
-            out.println("<h3 style='color:red;'>Error: Selected room and bed are already occupied.</h3>");
-            rs.close();
-            ps.close();
-            return;
-    }
-        rs.close();
-        // Simulate password hashing (replace with bcrypt in production)
-        String hashedPassword = pwd != null && !pwd.isEmpty() ? pwd : null;
-
-        // Step 3: Insert patient
-        ps = con.prepareStatement(
-            "INSERT INTO patient_info (PNAME, GENDER, AGE, BGROUP, PHONE, STREET, AREA, CITY, STATE, PINCODE, COUNTRY, REA_OF_VISIT, ROOM_NUMBER, BED_NO, DOCTOR_ID, DATE_ADDED, EMAIL, PASSWORD) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
-        );
-        ps.setString(1, pName);
-        ps.setString(2, gender);
-        ps.setInt(3, Integer.parseInt(age));
-        ps.setString(4, bgroup);
-        ps.setString(5, phone);
-        ps.setString(6, street);
-        ps.setString(7, area);
-        ps.setString(8, city);
-        ps.setString(9, state);
-        ps.setString(10, pincode);
-        ps.setString(11, country);
-        ps.setString(12, rov);
-        ps.setInt(13, Integer.parseInt(roomNo));
-        ps.setInt(14, Integer.parseInt(bedNo));
-        ps.setInt(15, doctorId);
-        ps.setString(16, joindate);
-        ps.setString(17, email);
-        ps.setString(18, hashedPassword);
-
-        int i = ps.executeUpdate();
-
-        if (i > 0) {
-            // Update room status to busy
-            ps = con.prepareStatement("UPDATE room_info SET status = ? WHERE room_no = ? AND bed_no = ?");
-            ps.setString(1, "busy");
-            ps.setInt(2, Integer.parseInt(roomNo));
-            ps.setInt(3, Integer.parseInt(bedNo));
-            ps.executeUpdate();
-%>
-            <div style="text-align: center; margin-top: 25%;">
-                <font color="green">
-                    <script type="text/javascript">
-                        function Redirect() {
-                            window.location = "patients.jsp";
-                        }
-                        document.write("<h2>Patient Added Successfully</h2><br><br>");
-                        document.write("<h3>Redirecting to home page...</h3>");
-                        setTimeout('Redirect()', 3000);
-                    </script>
-                </font>
-            </div>
-<%
-        } else {
-            out.println("<h3 style='color:red;'>Error: Failed to add patient.</h3>");
-        }
-
-        ps.close();
-        con.commit();
-    } catch (SQLException e) {
-        System.out.println("SQLException in add_patient_validation.jsp: " + e.getMessage());
-        e.printStackTrace();
-        out.println("<h3 style='color:red;'>Error: " + e.getMessage() + "</h3>");
-    } catch (Exception e) {
-        System.out.println("Unexpected error in add_patient_validation.jsp: " + e.getMessage());
-        e.printStackTrace();
-        out.println("<h3 style='color:red;'>Unexpected error: " + e.getMessage() + "</h3>");
-    } finally {
+        Connection con = null;
+        PreparedStatement ps = null;
+        PreparedStatement statusCheckPs = null;
+        PreparedStatement updateStatusPs = null;
+        ResultSet rs = null;
         try {
-            if (con != null) {
-                rs.close();
+            // Get database connection
+            con = (Connection) application.getAttribute("connection");
+            if (con == null) {
+                Class.forName("com.mysql.cj.jdbc.Driver");
+                con = DriverManager.getConnection("jdbc:mysql://localhost:3306/hms", "root", "password");
             }
-            if (ps != null) ps.close();
+
+            // Basic validation
+            if (pname == null || pname.trim().isEmpty()) {
+                %>
+                <font color="red">
+                <script type="text/javascript">
+                function Redirect() { window.location="patients.jsp"; }
+                document.write("<h2>Error: Patient name is required.</h2><br><br>");
+                document.write("<h3>Redirecting you to patient form...</h3>");
+                setTimeout('Redirect()', 3000);
+                </script>
+                </font>
+                <%
+                return;
+            }
+            if (email == null || email.trim().isEmpty()) {
+                %>
+                <font color="red">
+                <script type="text/javascript">
+                function Redirect() { window.location="patients.jsp"; }
+                document.write("<h2>Error: Email is required.</h2><br><br>");
+                document.write("<h3>Redirecting you to patient form...</h3>");
+                setTimeout('Redirect()', 3000);
+                </script>
+                </font>
+                <%
+                return;
+            }
+            if (pwd == null || pwd.trim().isEmpty() || pwd.length() < 8) {
+                %>
+                <font color="red">
+                <script type="text/javascript">
+                function Redirect() { window.location="patients.jsp"; }
+                document.write("<h2>Error: Password must be at least 8 characters.</h2><br><br>");
+                document.write("<h3>Redirecting you to patient form...</h3>");
+                setTimeout('Redirect()', 3000);
+                </script>
+                </font>
+                <%
+                return;
+            }
+            if (phone == null || !phone.matches("\\d{10}")) {
+                %>
+                <font color="red">
+                <script type="text/javascript">
+                function Redirect() { window.location="patients.jsp"; }
+                document.write("<h2>Error: Phone must be 10 digits.</h2><br><br>");
+                document.write("<h3>Redirecting you to patient form...</h3>");
+                setTimeout('Redirect()', 3000);
+                </script>
+                </font>
+                <%
+                return;
+            }
+            if (pincode == null || !pincode.matches("\\d{6}")) {
+                %>
+                <font color="red">
+                <script type="text/javascript">
+                function Redirect() { window.location="patients.jsp"; }
+                document.write("<h2>Error: Pincode must be 6 digits.</h2><br><br>");
+                document.write("<h3>Redirecting you to patient form...</h3>");
+                setTimeout('Redirect()', 3000);
+                </script>
+                </font>
+                <%
+                return;
+            }
+            if (joindate == null || joindate.trim().isEmpty()) {
+                %>
+                <font color="red">
+                <script type="text/javascript">
+                function Redirect() { window.location="patients.jsp"; }
+                document.write("<h2>Error: Admission date is required.</h2><br><br>");
+                document.write("<h3>Redirecting you to patient form...</h3>");
+                setTimeout('Redirect()', 3000);
+                </script>
+                </font>
+                <%
+                return;
+            }
+            if (roomNo == null || roomNo.trim().isEmpty()) {
+                %>
+                <font color="red">
+                <script type="text/javascript">
+                function Redirect() { window.location="patients.jsp"; }
+                document.write("<h2>Error: Room number is required.</h2><br><br>");
+                document.write("<h3>Redirecting you to patient form...</h3>");
+                setTimeout('Redirect()', 3000);
+                </script>
+                </font>
+                <%
+                return;
+            }
+            if (bedNo == null || bedNo.trim().isEmpty()) {
+                %>
+                <font color="red">
+                <script type="text/javascript">
+                function Redirect() { window.location="patients.jsp"; }
+                document.write("<h2>Error: Bed number is required.</h2><br><br>");
+                document.write("<h3>Redirecting you to patient form...</h3>");
+                setTimeout('Redirect()', 3000);
+                </script>
+                </font>
+                <%
+                return;
+            }
+
+            // Validate room and bed
+            Integer roomNoInt = Integer.parseInt(roomNo);
+            Integer bedNoInt = Integer.parseInt(bedNo);
+
+            // Check if room and bed exist and are available
+            statusCheckPs = con.prepareStatement("SELECT status FROM room_info WHERE room_no = ? AND bed_no = ?");
+            statusCheckPs.setInt(1, roomNoInt);
+            statusCheckPs.setInt(2, bedNoInt);
+            rs = statusCheckPs.executeQuery();
+            if (!rs.next()) {
+                %>
+                <font color="red">
+                <script type="text/javascript">
+                function Redirect() { window.location="patients.jsp"; }
+                document.write("<h2>Error: Room <%=roomNo%> with Bed <%=bedNo%> does not exist.</h2><br><br>");
+                document.write("<h3>Redirecting you to patient form...</h3>");
+                setTimeout('Redirect()', 3000);
+                </script>
+                </font>
+                <%
+                return;
+            }
+            String currentStatus = rs.getString("status");
+            if (!"Available".equalsIgnoreCase(currentStatus)) {
+                %>
+                <font color="red">
+                <script type="text/javascript">
+                function Redirect() { window.location="patients.jsp"; }
+                document.write("<h2>Error: Room <%=roomNo%>, Bed <%=bedNo%> is already occupied.</h2><br><br>");
+                document.write("<h3>Redirecting you to patient form...</h3>");
+                setTimeout('Redirect()', 3000);
+                </script>
+                </font>
+                <%
+                return;
+            }
+
+            // Begin transaction
+            con.setAutoCommit(false);
+
+            // Insert patient
+            ps = con.prepareStatement(
+                "INSERT INTO patient_info (PNAME, GENDER, AGE, BGROUP, PHONE, STREET, AREA, CITY, STATE, PINCODE, COUNTRY, REA_OF_VISIT, PROBLEM_DESCRIPTION, ROOM_NO, BED_NO, DOCTOR_ID, DATE_AD, EMAIL, PASSWORD) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                Statement.RETURN_GENERATED_KEYS
+            );
+            ps.setString(1, pname);
+            ps.setString(2, gender != null ? gender : "");
+            ps.setInt(3, age != null && !age.isEmpty() ? Integer.parseInt(age) : 0);
+            ps.setString(4, bgroup != null ? bgroup : "");
+            ps.setString(5, phone);
+            ps.setString(6, street != null ? street : "");
+            ps.setString(7, area != null ? area : "");
+            ps.setString(8, city != null ? city : "");
+            ps.setString(9, state != null ? state : "");
+            ps.setString(10, pincode != null ? pincode : "");
+            ps.setString(11, country != null ? country : "");
+            ps.setString(12, rov != null ? rov : "");
+            ps.setString(13, probDesc != null ? probDesc : "");
+            ps.setInt(14, roomNoInt);
+            ps.setInt(15, bedNoInt);
+            ps.setObject(16, doctId != null && !doctId.isEmpty() ? Integer.parseInt(doctId) : null);
+            ps.setString(17, joindate);
+            ps.setString(18, email);
+            ps.setString(19, pwd);
+
+            int rowsAffected = ps.executeUpdate();
+            int generatedId = 0;
+            if (rowsAffected > 0) {
+                rs = ps.getGeneratedKeys();
+                if (rs.next()) {
+                    generatedId = rs.getInt(1);
+                }
+
+                // Update room status to Occupied
+                updateStatusPs = con.prepareStatement("UPDATE room_info SET status = 'Occupied' WHERE room_no = ? AND bed_no = ?");
+                updateStatusPs.setInt(1, roomNoInt);
+                updateStatusPs.setInt(2, bedNoInt);
+                int statusUpdated = updateStatusPs.executeUpdate();
+                if (statusUpdated == 0) {
+                    throw new SQLException("Failed to update room status for Room " + roomNoInt + ", Bed " + bedNoInt);
+                } else {
+                    System.out.println("Updated status to Occupied for Room " + roomNoInt + ", Bed " + bedNoInt);
+                }
+
+                // Commit transaction
+                con.commit();
+
+                %>
+                <font color="green">
+                <script type="text/javascript">
+                function Redirect() { window.location="patients.jsp"; }
+                document.write("<h2>Patient Added Successfully! Patient ID: <%=generatedId%></h2><br><br>");
+                document.write("<h3>Redirecting you to patient form...</h3>");
+                setTimeout('Redirect()', 3000);
+                </script>
+                </font>
+                <%
+            } else {
+                con.rollback();
+                %>
+                <font color="red">
+                <script type="text/javascript">
+                function Redirect() { window.location="patients.jsp"; }
+                document.write("<h2>Error: Failed to add patient.</h2><br><br>");
+                document.write("<h3>Redirecting you to patient form...</h3>");
+                setTimeout('Redirect()', 3000);
+                </script>
+                </font>
+                <%
+            }
         } catch (SQLException e) {
+            if (con != null) {
+                try { con.rollback(); } catch (SQLException ex) { ex.printStackTrace(); }
+            }
+            %>
+            <font color="red">
+            <script type="text/javascript">
+            function Redirect() { window.location="patients.jsp"; }
+            document.write("<h2>Database Error: <%=e.getMessage()%></h2><br><br>");
+            document.write("<h3>Redirecting you to patient form...</h3>");
+            setTimeout('Redirect()', 3000);
+            </script>
+            </font>
+            <%
             e.printStackTrace();
+        } catch (Exception e) {
+            if (con != null) {
+                try { con.rollback(); } catch (SQLException ex) { ex.printStackTrace(); }
+            }
+            %>
+            <font color="red">
+            <script type="text/javascript">
+            function Redirect() { window.location="patients.jsp"; }
+            document.write("<h2>Unexpected Error: <%=e.getMessage()%></h2><br><br>");
+            document.write("<h3>Redirecting you to patient form...</h3>");
+            setTimeout('Redirect()', 3000);
+            </script>
+            </font>
+            <%
+            e.printStackTrace();
+        } finally {
+            if (rs != null) try { rs.close(); } catch (SQLException e) { e.printStackTrace(); }
+            if (ps != null) try { ps.close(); } catch (SQLException e) { e.printStackTrace(); }
+            if (statusCheckPs != null) try { statusCheckPs.close(); } catch (SQLException e) { e.printStackTrace(); }
+            if (updateStatusPs != null) try { updateStatusPs.close(); } catch (SQLException e) { e.printStackTrace(); }
+            if (con != null) try { con.setAutoCommit(true); } catch (SQLException e) { e.printStackTrace(); }
         }
-    }
-}
-%>
+    %>
+    </div>
 </body>
 </html>
+```

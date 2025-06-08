@@ -1,30 +1,50 @@
 <%@page import="java.sql.*"%>
-<%	
-	String roomNo=request.getParameter("roomNo");
-%>		
+<%@page contentType="text/html;charset=UTF-8" %>
 <%
-         Connection c=(Connection)application.getAttribute("connection");
-	PreparedStatement ps=c.prepareStatement("select bed_no,status from room_info where room_no=?");
-	ps.setString(1,roomNo);
-	ResultSet rs=ps.executeQuery();
-%>
-<select class="form-control" name="bed_no">
-<option selected="selected">Select Bed</option>
-<%
-	while(rs.next())
-	{
-		int bedNo=rs.getInt(1);
-		String status=rs.getString(2);
-		if(status.equals("available"))
-		{
-%>
-		<option value="<%=bedNo%>"><%=bedNo%></option>
-<%
-		}
-	}
-%>
-	</select>
-<%
-	rs.close();
-	ps.close();
+    String roomNo = request.getParameter("roomNo");
+    if (roomNo == null || roomNo.trim().isEmpty()) {
+        %>
+        <option value="">Invalid room number</option>
+        <%
+        return;
+    }
+    Connection conn = (Connection) application.getAttribute("connection");
+    PreparedStatement ps = null;
+    ResultSet rs = null;
+    try {
+        ps = conn.prepareStatement(
+            "SELECT bed_no FROM room_info WHERE room_no = ? AND LOWER(status) = 'available' ORDER BY bed_no ASC"
+        );
+        ps.setInt(1, Integer.parseInt(roomNo));
+        rs = ps.executeQuery();
+        boolean hasBeds = false;
+        %>
+        <option value="">Select Bed</option>
+        <%
+        while (rs.next()) {
+            int bedNo = rs.getInt("bed_no");
+            hasBeds = true;
+            %>
+            <option value="<%=bedNo%>"><%=bedNo%></option>
+            <%
+        }
+        if (!hasBeds) {
+            %>
+            <option value="">No available beds</option>
+            <%
+        }
+    } catch (NumberFormatException e) {
+        %>
+        <option value="">Invalid room number format</option>
+        <%
+        e.printStackTrace();
+    } catch (SQLException e) {
+        %>
+        <option value="">Error loading beds</option>
+        <%
+        e.printStackTrace();
+    } finally {
+        if (rs != null) try { rs.close(); } catch (SQLException e) {}
+        if (ps != null) try { ps.close(); } catch (SQLException e) {}
+    }
 %>

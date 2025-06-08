@@ -14,40 +14,49 @@
     <link rel="stylesheet" href="css/style.css">
     <!-- Inline CSS -->
     <style>
-        /* Form spacing to match doctor.jsp */
         #adddoctor .form-group {
-            margin-bottom: 15px !important; /* Match Bootstrap default */
+            margin-bottom: 15px !important;
         }
         #adddoctor .panel-body {
-            padding: 15px !important; /* Match Bootstrap default panel-body padding */
+            padding: 15px !important;
         }
         #adddoctor .control-label {
-            padding-right: 0; /* Remove custom padding to align with doctor.jsp */
+            padding-right: 0;
         }
-        /* Updated #adddoctor styling (remove absolute positioning) */
         #adddoctor {
             margin: 0 !important;
             padding: 5px !important;
             background-color: #f0f8ff;
         }
-        /* Adjusted spacing overrides */
         .panel, .panel-body, .tab-content, .row {
             margin: 0 !important;
             padding: 0 !important;
         }
         .maincontent {
             position: relative !important;
-            min-height: 603px !important; /* Match style.css height */
+            min-height: 603px !important;
         }
         .contentinside {
-            margin-top: 10px !important; /* Restore style.css margin */
+            margin-top: 10px !important;
         }
         .header, .navbar, .nav-tabs {
             margin: 0 !important;
             padding: 0 !important;
         }
         .panel-heading {
-            padding: 10px 15px !important; /* Restore Bootstrap default */
+            padding: 10px 15px !important;
+        }
+        #reasonOfVisit {
+            height: 34px;
+            width: 100%;
+        }
+        #problemDescription {
+            resize: vertical;
+            min-height: 100px;
+        }
+        #doctorDisplay {
+            background-color: #f5f5f5;
+            cursor: not-allowed;
         }
     </style>
     <!-- JavaScript -->
@@ -58,44 +67,101 @@
             return confirm("Do You Really Want to Delete Patient?");
         }
 
-        document.addEventListener('DOMContentLoaded', function() {
-            const addPatientForm = document.querySelector('#addPatientForm');
-            if (addPatientForm) {
-                addPatientForm.addEventListener('submit', function(e) {
-                    const phone = document.getElementById('phone').value.trim();
-                    const pincode = document.getElementById('pincode').value.trim();
-                    const pwd = document.getElementById('pwd').value.trim();
-                    const street = document.getElementById('street').value.trim();
-                    const area = document.getElementById('area').value.trim();
-                    const city = document.getElementById('city').value.trim();
-                    const state = document.getElementById('state').value.trim();
-                    if (!phone.match(/^\d{10}$/)) {
-                        alert("Phone must be exactly 10 digits.");
-                        e.preventDefault();
-                    } else if (!pincode.match(/^\d{6}$/)) {
-                        alert("Pincode must be exactly 6 digits.");
-                        e.preventDefault();
-                    } else if (!pwd || pwd.length < 8) {
-                        alert("Password must be at least 8 characters.");
-                        e.preventDefault();
-                    } else if (!street) {
-                        alert("Street cannot be empty.");
-                        e.preventDefault();
-                    } else if (!area) {
-                        alert("Area cannot be empty.");
-                        e.preventDefault();
-                    } else if (!city) {
-                        alert("City cannot be empty.");
-                        e.preventDefault();
-                    } else if (!state) {
-                        alert("State cannot be empty.");
-                        e.preventDefault();
-                    }
+        // Function to retrieve available beds for a selected room
+        function retrieveBeds() {
+            var roomNo = $('#roomNo').val();
+            var bedSelect = $('#bedNo');
+            bedSelect.prop('disabled', true).html('<option value="">Loading...</option>');
+            
+            if (roomNo) {
+                $.ajax({
+                    url: 'retrieve_beds_validation.jsp',
+                    type: 'POST',
+                    data: { roomNo: roomNo },
+                    success: function(data) {
+                        bedSelect.html(data);
+                        bedSelect.prop('disabled', false);
+                        if (bedSelect.find('option').length <= 1) {
+                            bedSelect.html('<option value="">No available beds</option>');
+                        }
+                    },
+                    error: function(jqXHR, textStatus, errorThrown) {
+                        bedSelect.html('<option value="">Error loading beds</option>');
+                        bedSelect.prop('disabled', true);
+                        alert('Error fetching beds: ' + textStatus);
+                        console.error('AJAX error:', textStatus, errorThrown);
+                    },
+                    cache: false // Prevent AJAX caching
                 });
+            } else {
+                bedSelect.html('<option value="">Select Bed</option>');
+                bedSelect.prop('disabled', true);
             }
+        }
+
+        $(document).ready(function() {
+            // Trigger bed retrieval when room changes
+            $('#roomNo').on('change', retrieveBeds);
+
+            // Form validation
+            $('#addPatientForm').on('submit', function(e) {
+                var phone = $('#phone').val().trim();
+                var pincode = $('#pincode').val().trim();
+                var pwd = $('#pwd').val().trim();
+                var roomNo = $('#roomNo').val();
+                var bedNo = $('#bedNo').val();
+
+                if (!phone.match(/^\d{10}$/)) {
+                    alert("Phone must be exactly 10 digits.");
+                    e.preventDefault();
+                } else if (!pincode.match(/^\d{6}$/)) {
+                    alert("Pincode must be exactly 6 digits.");
+                    e.preventDefault();
+                } else if (pwd.length < 8) {
+                    alert("Password must be at least 8 characters.");
+                    e.preventDefault();
+                } else if (!roomNo) {
+                    alert("Please select a room.");
+                    e.preventDefault();
+                } else if (!bedNo) {
+                    alert("Please select a bed.");
+                    e.preventDefault();
+                }
+            });
+
+            // Doctor assignment based on Reason of Visit
+            $('#reasonOfVisit').on('change', function() {
+                var reason = $(this).val();
+                if (reason) {
+                    $.ajax({
+                        url: 'getDoctorByReason.jsp',
+                        type: 'POST',
+                        data: { reason: reason },
+                        dataType: 'json',
+                        success: function(data) {
+                            if (data.doctorId && data.doctorName) {
+                                $('#doctorDisplay').val(data.doctorName);
+                                $('#doct').val(data.doctorId);
+                            } else {
+                                $('#doctorDisplay').val('No doctor available');
+                                $('#doct').val('');
+                                alert('No doctor found for this reason.');
+                            }
+                        },
+                        error: function() {
+                            $('#doctorDisplay').val('Error');
+                            $('#doct').val('');
+                            alert('Error fetching doctor.');
+                        },
+                        cache: false // Prevent AJAX caching
+                    });
+                } else {
+                    $('#doctorDisplay').val('');
+                    $('#doct').val('');
+                }
+            });
         });
     </script>
-    <script src="validation.js"></script>
 </head>
 <body>
     <div class="row">
@@ -125,12 +191,7 @@
                                     <td>Room No</td>
                                     <td>Bed No</td>
                                     <td>Observed By</td>
-                                    <td>Street</td>
-                                    <td>Area</td>
-                                    <td>City</td>
-                                    <td>State</td>
-                                    <td>Pincode</td>
-                                    <td>Country</td>
+                                    <td>Address</td>
                                     <td>Options</td>
                                 </tr>
                                 <%
@@ -161,6 +222,14 @@
                                             String state = rs.getString("STATE");
                                             String pincode = rs.getString("PINCODE");
                                             String country = rs.getString("COUNTRY");
+                                            StringBuilder address = new StringBuilder();
+                                            if (street != null && !street.trim().isEmpty()) address.append(street).append(", ");
+                                            if (area != null && !area.trim().isEmpty()) address.append(area).append(", ");
+                                            if (city != null && !city.trim().isEmpty()) address.append(city).append(", ");
+                                            if (state != null && !state.trim().isEmpty()) address.append(state).append(", ");
+                                            if (pincode != null && !pincode.trim().isEmpty()) address.append(pincode).append(", ");
+                                            if (country != null && !country.trim().isEmpty()) address.append(country);
+                                            String addressStr = address.toString().replaceAll(",\\s*$", "");
                                             pageContext.setAttribute("currentDoctorId", rs.getInt("DOCTOR_ID"));
                                 %>
                                 <tr>
@@ -175,12 +244,7 @@
                                     <td><%=room_no%></td>
                                     <td><%=bed_no%></td>
                                     <td><%=doc_name%></td>
-                                    <td><%=street != null ? street : ""%></td>
-                                    <td><%=area != null ? area : ""%></td>
-                                    <td><%=city != null ? city : ""%></td>
-                                    <td><%=state != null ? state : ""%></td>
-                                    <td><%=pincode != null ? pincode : ""%></td>
-                                    <td><%=country != null ? country : ""%></td>
+                                    <td><%=addressStr%></td>
                                     <td>
                                         <a href="#"><button type="button" class="btn btn-primary" data-toggle="modal" data-target="#myModal<%=id%>"><span class="glyphicon glyphicon-wrench" aria-hidden="true"></span></button></a>
                                         <a href="delete_patient_validation.jsp?patientId=<%=id%>&roomNo=<%=room_no%>&bedNo=<%=bed_no%>" onclick="return confirmDelete()" class="btn btn-danger"><span class="glyphicon glyphicon-trash" aria-hidden="true"></span></a>
@@ -231,15 +295,15 @@
                                     String pwd = rsModal.getString("PASSWORD");
                                     pageContext.setAttribute("currentDoctorId", doctorId);
                         %>
-                        <div class="modal fade" id="myModal<%=id%>" tabindex="-1" role="dialog" aria-labelledby="myModalLabel">
+                        <div class="modal fade" id="myModal<%=id%>" tabindex="-1" role="dialog" aria-labelledby="aria-label-<%=id%>">
                             <div class="modal-dialog" role="document">
                                 <div class="modal-content">
                                     <div class="modal-header">
-                                        <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
-                                        <h4 class="modal-title" id="myModalLabel">Edit Patient Information</h4>
+                                        <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
+                                        <h4 class="modal-title" id="aria-label-<%=id%>">Edit Patient Information</h4>
                                     </div>
                                     <div class="modal-body">
-                                        <div class="panel panel-default">
+                                        <div class="panel">
                                             <div class="panel-body">
                                                 <form class="form-horizontal" action="edit_patient_validation.jsp" method="post">
                                                     <div class="form-group">
@@ -323,7 +387,7 @@
                                                                     PreparedStatement ps1 = null;
                                                                     ResultSet rs1 = null;
                                                                     try {
-                                                                        ps1 = c.prepareStatement("SELECT DISTINCT room_no FROM room_info", ResultSet.TYPE_SCROLL_SENSITIVE, ResultSet.CONCUR_UPDATABLE);
+                                                                        ps1 = c.prepareStatement("SELECT DISTINCT room_no FROM room_info WHERE STATUS = 'Available' ORDER BY room_no", ResultSet.TYPE_SCROLL_SENSITIVE, ResultSet.CONCUR_UPDATABLE);
                                                                         rs1 = ps1.executeQuery();
                                                                         while (rs1.next()) {
                                                                             int roomNo1 = rs1.getInt(1);
@@ -382,7 +446,7 @@
                                                             </select>
                                                         </div>
                                                     </div>
-                                                    <div class="form-group">
+                                                    <div class="form-game">
                                                         <label class="col-sm-2 control-label">Admission Date</label>
                                                         <div class="col-sm-10">
                                                             <input type="date" class="form-control" name="admit_date" value="<%=admit_date%>" placeholder="Admission Date" required>
@@ -421,9 +485,11 @@
                             </div>
                         </div>
                         <%
-                                }
-                            } catch (SQLException e) {
-                                out.println("<div class='alert alert-danger'>Error loading patient modals: " + e.getMessage() + "</div>");
+                            }
+                        } catch (SQLException e) {
+                            %>
+                            <div class="alert alert-danger">Error loading patient modals: <%=e.getMessage() %></div>
+                            <%
                             } finally {
                                 if (rsModal != null) try { rsModal.close(); } catch (SQLException e) {}
                                 if (psModal != null) try { psModal.close(); } catch (SQLException e) {}
@@ -501,27 +567,70 @@
                                             </div>
                                         </div>
                                         <div class="form-group">
-                                            <label class="col-sm-2 control-label">Reason</label>
+                                            <label class="col-sm-2 control-label">Reason Of Visit</label>
                                             <div class="col-sm-10">
-                                                <input type="text" class="form-control" name="rov" placeholder="Reason Of Visit" required>
+                                                <select class="form-control" name="rov" id="reasonOfVisit" required>
+                                                    <option value="">-- Select Reason --</option>
+                                                    <option value="Fever">Fever</option>
+                                                    <option value="Cold / Cough">Cold / Cough</option>
+                                                    <option value="Headache / Migraine">Headache / Migraine</option>
+                                                    <option value="Chest Pain">Chest Pain</option>
+                                                    <option value="Shortness of Breath / Difficulty Breathing">Shortness of Breath / Difficulty Breathing</option>
+                                                    <option value="Abdominal Pain / Stomach Pain">Abdominal Pain / Stomach Pain</option>
+                                                    <option value="Back Pain">Back Pain</option>
+                                                    <option value="Joint Pain / Arthritis">Joint Pain / Arthritis</option>
+                                                    <option value="Skin Rash / Allergies">Skin Rash / Allergies</option>
+                                                    <option value="Diarrhea / Vomiting">Diarrhea / Vomiting</option>
+                                                    <option value="Fatigue">Fatigue</option>
+                                                    <option value="High Blood Pressure (Hypertension)">High Blood Pressure (Hypertension)</option>
+                                                    <option value="Diabetes Checkup">Diabetes Checkup</option>
+                                                    <option value="Infection">Infection</option>
+                                                    <option value="Injury / Trauma">Injury / Trauma</option>
+                                                    <option value="Pregnancy Checkup / Antenatal Care">Pregnancy Checkup / Antenatal Care</option>
+                                                    <option value="Mental Health Issues (Anxiety, Depression)">Mental Health Issues (Anxiety, Depression)</option>
+                                                    <option value="Vision Problems / Eye Pain">Vision Problems / Eye Pain</option>
+                                                    <option value="Earache / Hearing Problems">Earache / Hearing Problems</option>
+                                                    <option value="Dental Pain">Dental Pain</option>
+                                                    <option value="Follow-up / Routine Checkup">Follow-up / Routine Checkup</option>
+                                                    <option value="Medication Refill">Medication Refill</option>
+                                                    <option value="Allergy Reaction">Allergy Reaction</option>
+                                                    <option value="Asthma Attack">Asthma Attack</option>
+                                                    <option value="Skin Infection / Boils">Skin Infection / Boils</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                        <div class="form-group">
+                                            <label class="col-sm-2 control-label">Describe Patient's Problem</label>
+                                            <div class="col-sm-10">
+                                                <textarea class="form-control" name="prob_desc" id="problemDescription" placeholder="Describe Your Problem" rows="4"></textarea>
                                             </div>
                                         </div>
                                         <div class="form-group">
                                             <label class="col-sm-2 control-label">Room No</label>
                                             <div class="col-sm-10">
-                                                <select class="form-control" name="roomNo" id="roomNo" onchange="retrieveBeds()" required>
+                                                <select class="form-control" name="roomNo" id="roomNo" required>
                                                     <option value="">Select Room</option>
                                                     <%
                                                         PreparedStatement ps3 = null;
                                                         ResultSet rs3 = null;
                                                         try {
-                                                            ps3 = c.prepareStatement("SELECT DISTINCT room_no FROM room_info", ResultSet.TYPE_SCROLL_SENSITIVE, ResultSet.CONCUR_UPDATABLE);
+                                                            ps3 = c.prepareStatement(
+                                                                "SELECT DISTINCT ROOM_NO FROM room_info WHERE ROOM_NO IN (SELECT ROOM_NO FROM room_info WHERE LOWER(status) = 'available') ORDER BY ROOM_NO",
+                                                                ResultSet.TYPE_SCROLL_SENSITIVE, ResultSet.CONCUR_UPDATABLE
+                                                            );
                                                             rs3 = ps3.executeQuery();
-                                                            while (rs3.next()) {
-                                                                int roomNo = rs3.getInt(1);
-                                                    %>
-                                                    <option value="<%=roomNo%>"><%=roomNo%></option>
-                                                    <%
+                                                            if (!rs3.next()) {
+                                                                %>
+                                                                <option value="" disabled>No available rooms</option>
+                                                                <%
+                                                            } else {
+                                                                rs3.beforeFirst();
+                                                                while (rs3.next()) {
+                                                                    int roomNo = rs3.getInt("ROOM_NO");
+                                                                    %>
+                                                                    <option value="<%=roomNo%>"><%=roomNo%></option>
+                                                                    <%
+                                                                }
                                                             }
                                                         } finally {
                                                             if (rs3 != null) try { rs3.close(); } catch (SQLException e) {}
@@ -532,37 +641,18 @@
                                             </div>
                                         </div>
                                         <div class="form-group">
-                                            <label class="col-sm-2 control-label">Bed No.</label>
+                                            <label class="col-sm-2 control-label">Bed No</label>
                                             <div class="col-sm-10">
-                                                <select class="form-control" name="bed_no" required>
-                                                    <option value="">Select Bed</option>
+                                                <select class="form-control" name="bed_no" id="bedNo" required disabled>
+                                                    <option value="">Select Room First</option>
                                                 </select>
                                             </div>
                                         </div>
                                         <div class="form-group">
                                             <label class="col-sm-2 control-label">Doctor</label>
                                             <div class="col-sm-10">
-                                                <select class="form-control" name="doct" required>
-                                                    <option value="">Select Doctor</option>
-                                                    <%
-                                                        PreparedStatement ps4 = null;
-                                                        ResultSet rs4 = null;
-                                                        try {
-                                                            ps4 = c.prepareStatement("SELECT ID, NAME FROM DOCTOR_INFO", ResultSet.TYPE_SCROLL_SENSITIVE, ResultSet.CONCUR_UPDATABLE);
-                                                            rs4 = ps4.executeQuery();
-                                                            while (rs4.next()) {
-                                                                int doctId = rs4.getInt("ID");
-                                                                String doctName = rs4.getString("NAME");
-                                                    %>
-                                                    <option value="<%=doctId%>"><%=doctName%> (<%=doctId%>)</option>
-                                                    <%
-                                                            }
-                                                        } finally {
-                                                            if (rs4 != null) try { rs4.close(); } catch (SQLException e) {}
-                                                            if (ps4 != null) try { ps4.close(); } catch (SQLException e) {}
-                                                        }
-                                                    %>
-                                                </select>
+                                                <input type="text" class="form-control" id="doctorDisplay" readonly placeholder="Doctor will be assigned based on Reason">
+                                                <input type="hidden" name="doct" id="doct">
                                             </div>
                                         </div>
                                         <div class="form-group">
