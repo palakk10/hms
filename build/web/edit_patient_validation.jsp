@@ -1,5 +1,11 @@
 <%@page import="java.sql.*" %>
 <%@page contentType="text/html" pageEncoding="UTF-8" %>
+<%!
+    private boolean isValidEmail(String email) {
+        String emailRegex = "^[a-zA-Z0-9_+&*-]+(?:\\.[a-zA-Z0-9_+&*-]+)*@(?:[a-zA-Z0-9-]+\\.)+[a-zA-Z]{2,7}$";
+        return email != null && email.matches(emailRegex);
+    }
+%>
 <!DOCTYPE html>
 <html>
 <head>
@@ -7,7 +13,6 @@
 </head>
 <body>
 <% 
-    // Retrieve form parameters
     String pid = request.getParameter("patientid");
     String name = request.getParameter("patientname");
     String email = request.getParameter("email");
@@ -28,7 +33,6 @@
     String age = request.getParameter("age");
     String bgroup = request.getParameter("bgroup");
 
-    // Log form parameters
     System.out.println("Form Parameters: patientid=" + pid + ", name=" + name + ", email=" + email + 
                        ", street=" + street + ", area=" + area + ", city=" + city + ", state=" + state + 
                        ", pincode=" + pincode + ", country=" + country + ", phone=" + phone + 
@@ -39,60 +43,62 @@
     Connection con = (Connection) application.getAttribute("connection");
     PreparedStatement ps = null;
     ResultSet rs = null;
-    try {
-        // Check database connection
-        if (con == null) {
-            System.out.println("ERROR: Database connection is null");
-            session.setAttribute("error-message", "Database connection failed.");
-            response.sendRedirect("patients.jsp");
-            return;
-        }
-        System.out.println("Database connection established");
 
-        // Validate critical fields
+    try {
+        if (con == null) {
+            throw new SQLException("Database connection is null");
+        }
+        con.setAutoCommit(false); // Start transaction
+
+        // Validate inputs
         if (pid == null || pid.trim().isEmpty() || !pid.matches("\\d+")) {
-            System.out.println("ERROR: Invalid Patient ID: " + pid);
-            session.setAttribute("error-message", "Invalid Patient ID.");
-            response.sendRedirect("patients.jsp");
-            return;
+            throw new Exception("Invalid Patient ID.");
+        }
+        if (name == null || name.trim().isEmpty()) {
+            throw new Exception("Patient name is required.");
+        }
+        if (email == null || !isValidEmail(email)) {
+            throw new Exception("Valid email is required.");
         }
         if (roomNo == null || roomNo.trim().isEmpty() || !roomNo.matches("\\d+")) {
-            System.out.println("ERROR: Invalid Room Number: " + roomNo);
-            session.setAttribute("error-message", "Room number is required.");
-            response.sendRedirect("patients.jsp");
-            return;
+            throw new Exception("Room number is required.");
         }
         if (bedNo == null || bedNo.trim().isEmpty() || !bedNo.matches("\\d+")) {
-            System.out.println("ERROR: Invalid Bed Number: " + bedNo);
-            session.setAttribute("error-message", "Bed number is required.");
-            response.sendRedirect("patients.jsp");
-            return;
+            throw new Exception("Bed number is required.");
         }
         if (doctId == null || doctId.trim().isEmpty() || !doctId.matches("\\d+")) {
-            System.out.println("ERROR: Invalid Doctor ID: " + doctId);
-            session.setAttribute("error-message", "Doctor selection is required.");
-            response.sendRedirect("patients.jsp");
-            return;
+            throw new Exception("Doctor selection is required.");
+        }
+        if (joindate == null || joindate.trim().isEmpty()) {
+            throw new Exception("Admission date is required.");
+        }
+        if (age == null || !age.matches("\\d+")) {
+            throw new Exception("Valid age is required.");
         }
 
-        // Parse integers
         int patientId = Integer.parseInt(pid);
         int newRoomNo = Integer.parseInt(roomNo);
         int newBedNo = Integer.parseInt(bedNo);
         int doctorId = Integer.parseInt(doctId);
-        int patientAge = (age != null && age.matches("\\d+")) ? Integer.parseInt(age) : 0;
+        int patientAge = Integer.parseInt(age);
+
+        // Check for duplicate email (excluding current patient)
+        ps = con.prepareStatement("SELECT ID FROM patient_info WHERE EMAIL = ? AND ID != ?");
+        ps.setString(1, email);
+        ps.setInt(2, patientId);
+        rs = ps.executeQuery();
+        if (rs.next()) {
+            throw new Exception("Email already exists.");
+        }
+        rs.close();
+        ps.close();
 
         // Verify patient exists
         ps = con.prepareStatement("SELECT ID FROM patient_info WHERE ID = ?");
         ps.setInt(1, patientId);
         rs = ps.executeQuery();
         if (!rs.next()) {
-            System.out.println("ERROR: Patient ID not found: " + patientId);
-            session.setAttribute("error-message", "Patient not found.");
-            response.sendRedirect("patients.jsp");
-            rs.close();
-            ps.close();
-            return;
+            throw new Exception("Patient not found.");
         }
         rs.close();
         ps.close();
@@ -102,12 +108,7 @@
         ps.setInt(1, doctorId);
         rs = ps.executeQuery();
         if (!rs.next()) {
-            System.out.println("ERROR: Doctor ID not found: " + doctorId);
-            session.setAttribute("error-message", "Doctor not found.");
-            response.sendRedirect("patients.jsp");
-            rs.close();
-            ps.close();
-            return;
+            throw new Exception("Doctor not found.");
         }
         rs.close();
         ps.close();
@@ -116,50 +117,36 @@
         ps = con.prepareStatement("SELECT ROOM_NO, BED_NO FROM patient_info WHERE ID = ?");
         ps.setInt(1, patientId);
         rs = ps.executeQuery();
-        int currentRoomNo = 0, currentBedNo = 0;
+        Integer currentRoomNo = null;
+        Integer currentBedNo = null;
         if (rs.next()) {
-            currentRoomNo = rs.getInt("ROOM_NO");
-            currentBedNo = rs.getInt("BED_NO");
+            currentRoomNo = rs.getInt("ROOM_NO") != 0 ? rs.getInt("ROOM_NO") : null;
+            currentBedNo = rs.getInt("BED_NO") != 0 ? rs.getInt("BED_NO") : null;
         }
         rs.close();
         ps.close();
-        System.out.println("Current assignment: ROOM_NO=" + currentRoomNo + ", BED_NO=" + currentBedNo);
-        System.out.println("New assignment: ROOM_NO=" + newRoomNo + ", BED_NO=" + newBedNo);
 
         // Check room/bed availability if changed
-        if (newRoomNo != currentRoomNo || newBedNo != currentBedNo) {
-            System.out.println("Checking availability for ROOM_NO=" + newRoomNo + ", BED_NO=" + newBedNo);
+        if (currentRoomNo == null || currentBedNo == null || newRoomNo != currentRoomNo || newBedNo != currentBedNo) {
             ps = con.prepareStatement("SELECT STATUS FROM room_info WHERE ROOM_NO = ? AND BED_NO = ?");
             ps.setInt(1, newRoomNo);
             ps.setInt(2, newBedNo);
             rs = ps.executeQuery();
             if (!rs.next()) {
-                System.out.println("ERROR: Room/Bed not found: ROOM_NO=" + newRoomNo + ", BED_NO=" + newBedNo);
-                session.setAttribute("error-message", "Invalid Room or Bed.");
-                response.sendRedirect("patients.jsp");
-                rs.close();
-                ps.close();
-                return;
+                throw new Exception("Invalid Room or Bed.");
             }
-            String status = rs.getString("STATUS");
-            if (!status.equalsIgnoreCase("Available")) {
-                System.out.println("ERROR: Room/Bed occupied: ROOM_NO=" + newRoomNo + ", BED_NO=" + newBedNo + ", STATUS=" + status);
-                session.setAttribute("error-message", "Room and bed are already occupied.");
-                response.sendRedirect("patients.jsp");
-                rs.close();
-                ps.close();
-                return;
+            if (!rs.getString("STATUS").equalsIgnoreCase("Available")) {
+                throw new Exception("Room and bed are already occupied.");
             }
             rs.close();
             ps.close();
         }
 
-        // Prepare update query
-        System.out.println("Updating patient_info for ID=" + patientId);
+        // Update patient
         ps = con.prepareStatement(
             "UPDATE patient_info SET PNAME = ?, GENDER = ?, AGE = ?, BGROUP = ?, PHONE = ?, STREET = ?, AREA = ?, CITY = ?, STATE = ?, PINCODE = ?, COUNTRY = ?, REA_OF_VISIT = ?, ROOM_NO = ?, BED_NO = ?, DOCTOR_ID = ?, DATE_AD = ?, EMAIL = ?, PASSWORD = ? WHERE ID = ?"
         );
-        ps.setString(1, name != null ? name.trim() : null);
+        ps.setString(1, name.trim());
         ps.setString(2, gender != null && gender.matches("Male|Female|Other") ? gender : null);
         ps.setInt(3, patientAge);
         ps.setString(4, bgroup != null && bgroup.matches("A\\+|A-|B\\+|B-|AB\\+|AB-|O\\+|O-") ? bgroup : null);
@@ -174,72 +161,62 @@
         ps.setInt(13, newRoomNo);
         ps.setInt(14, newBedNo);
         ps.setInt(15, doctorId);
-        ps.setString(16, joindate != null ? joindate.trim() : null);
-        ps.setString(17, email != null ? email.trim() : null);
-        ps.setString(18, pwd != null ? pwd.trim() : null); // Replace with bcrypt in production
+        ps.setString(16, joindate.trim());
+        ps.setString(17, email.trim());
+        ps.setString(18, pwd != null ? pwd.trim() : null);
         ps.setInt(19, patientId);
 
-        // Execute update
         int rowsAffected = ps.executeUpdate();
-        System.out.println("Rows affected by patient_info update: " + rowsAffected);
         ps.close();
 
         if (rowsAffected > 0) {
             // Update room status if changed
-            if (newRoomNo != currentRoomNo || newBedNo != currentBedNo) {
-                System.out.println("Updating room_info: ROOM_NO=" + newRoomNo + ", BED_NO=" + newBedNo + " to Occupied");
+            if (currentRoomNo == null || currentBedNo == null || newRoomNo != currentRoomNo || newBedNo != currentBedNo) {
                 ps = con.prepareStatement("UPDATE room_info SET STATUS = 'Occupied' WHERE ROOM_NO = ? AND BED_NO = ?");
                 ps.setInt(1, newRoomNo);
                 ps.setInt(2, newBedNo);
-                int roomRows = ps.executeUpdate();
-                System.out.println("Rows affected by room_info update (new bed): " + roomRows);
+                ps.executeUpdate();
                 ps.close();
 
-                if (currentRoomNo != 0 && currentBedNo != 0) {
-                    System.out.println("Updating old room_info: ROOM_NO=" + currentRoomNo + ", BED_NO=" + currentBedNo + " to Available");
+                if (currentRoomNo != null && currentBedNo != null) {
                     ps = con.prepareStatement("UPDATE room_info SET STATUS = 'Available' WHERE ROOM_NO = ? AND BED_NO = ?");
                     ps.setInt(1, currentRoomNo);
                     ps.setInt(2, currentBedNo);
-                    int oldRoomRows = ps.executeUpdate();
-                    System.out.println("Rows affected by room_info update (old bed): " + oldRoomRows);
+                    ps.executeUpdate();
                     ps.close();
                 }
             }
 
-            System.out.println("Committing transaction");
             con.commit();
 %>
-            <div style="text-align:center;margin-top:25%">
-                <font color="blue">
-                    <script type="text/javascript">
-                        function Redirect() {
-                            window.location = "patients.jsp";
-                        }
-                        document.write("<h2>Patient Details Updated Successfully</h2><br><br>");
-                        document.write("<h3>Redirecting you to home page....</h3>");
-                        setTimeout('Redirect()', 3000);
-                    </script>
-                </font>
-            </div>
+<div style="text-align: center; margin-top: 25%;">
+    <font color="blue">
+        <script>
+            function redirect() { window.location = "patients.jsp"; }
+            document.write("<h2>Patient Details Updated Successfully</h2><br><br>");
+            document.write("<h3>Redirecting...</h3>");
+            setTimeout(redirect, 3000);
+        </script>
+    </font>
+</div>
 <%
         } else {
-            System.out.println("ERROR: Update failed for patient ID=" + patientId);
-            session.setAttribute("error-message", "Failed to update patient. No matching record found.");
-            response.sendRedirect("patients.jsp");
+            throw new Exception("Failed to update patient.");
         }
     } catch (SQLException e) {
-        System.out.println("SQLException: " + e.getMessage());
-        e.printStackTrace();
+        if (con != null) try { con.rollback(); } catch (SQLException ex) { System.err.println("Rollback failed: " + ex.getMessage()); }
+        System.err.println("SQLException: " + e.getMessage());
         session.setAttribute("error-message", "Database error: " + e.getMessage());
         response.sendRedirect("patients.jsp");
     } catch (Exception e) {
-        System.out.println("Unexpected error: " + e.getMessage());
-        e.printStackTrace();
-        session.setAttribute("error-message", "Unexpected error: " + e.getMessage());
+        if (con != null) try { con.rollback(); } catch (SQLException ex) { System.err.println("Rollback failed: " + ex.getMessage()); }
+        System.err.println("Unexpected error: " + e.getMessage());
+        session.setAttribute("error-message", "Error: " + e.getMessage());
         response.sendRedirect("patients.jsp");
     } finally {
-        if (rs != null) try { rs.close(); } catch (SQLException e) { System.out.println("Error closing ResultSet: " + e.getMessage()); }
-        if (ps != null) try { ps.close(); } catch (SQLException e) { System.out.println("Error closing PreparedStatement: " + e.getMessage()); }
+        if (rs != null) try { rs.close(); } catch (SQLException e) { System.err.println("Error closing ResultSet: " + e.getMessage()); }
+        if (ps != null) try { ps.close(); } catch (SQLException e) { System.err.println("Error closing PreparedStatement: " + e.getMessage()); }
+        if (con != null) try { con.setAutoCommit(true); } catch (SQLException e) { System.err.println("Error resetting auto-commit: " + e.getMessage()); }
     }
 %>
 </body>
