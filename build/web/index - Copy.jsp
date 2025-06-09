@@ -46,11 +46,16 @@
 							
 								<div class="input-group input-group-lg">
 								  <span class="input-group-addon" id="sizing-addon1"><span class="glyphicon glyphicon-user" aria-hidden="true"></span></span>
-								  <select class="form-control" name="userrole">
+								<select class="form-control" name="userrole">
 													<option selected="selected">Select User</option>
-													  <option value="admin">Admin</option>
+											 		 <option value="admin">Admin</option>
+													  <option value="docotr">Doctor</option>
+													  <option value="nurse">Nurse</option>
 													  <option value="patient">Patient</option>
-                                                                                                          <<option value="doctor">Doctor</option>
+													  <option value="laboratorist">Laboratorist</option>
+													  <option value="accountant">Accountant</option>
+													  <option value="pharmacist">Pharmacist</option>
+													  
 													</select>
 								</div>
 								<br/>
@@ -73,11 +78,8 @@
 								</div>
 						</form>
 					</div>
-		<a href="register_patient.jsp" style="text-align:Center;font-weight:bold;font-size:120%;padding: 0 2%">Register As Patient</a>						
-		                <a href="register_doctor.jsp" style="text-align:Center;font-weight:bold;font-size:120%;padding: 0 2%">Register As Doctor</a>
-		
-                                </div>
-				<div style="text-align:center;font-weight:bold;color:red">Login Failed.Check Username or Password.</div>
+						
+				</div>
 			</div>				
 		</div>
 		

@@ -50,7 +50,7 @@
 													<option selected="selected">Select User</option>
 													  <option value="admin">Admin</option>
 													  <option value="patient">Patient</option>
-													  
+                                                                                                          <<option value="doctor">Doctor</option>
 													</select>
 								</div>
 								<br/>

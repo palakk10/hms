@@ -1,58 +1,62 @@
-<%@page import="java.sql.*" %>
-
-
+```jsp
+<%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
+<%@ page import="java.sql.*" %>
 <%
+    String patientId = request.getParameter("patient_id");
+    String patientName = request.getParameter("patient_name");
+    String otherCharge = request.getParameter("other_charge");
+    String roomCharge = request.getParameter("room_charge");
+    String pathoCharge = request.getParameter("pathology_charge");
+    String entryDate = request.getParameter("entry_date");
+    String disDate = request.getParameter("dis_date");
 
+    // Combine room_charge and other_charge into otCharge
+    double otCharge = 0.0;
+    try {
+        double roomChg = roomCharge != null && !roomCharge.isEmpty() ? Double.parseDouble(roomCharge) : 0.0;
+        double otherChg = otherCharge != null && !otherCharge.isEmpty() ? Double.parseDouble(otherCharge) : 0.0;
+        otCharge = roomChg + otherChg;
+    } catch (NumberFormatException e) {
+        System.err.println("add_billing_validation.jsp: Invalid charge format: " + e.getMessage());
+    }
 
-	String id=request.getParameter("patientid");
+    System.out.println("add_billing_validation.jsp: Parameters: patient_id=" + patientId + ", patient_name=" + patientName + ", ot_charge=" + otCharge + ", pathology_charge=" + pathoCharge + ", room_charge=" + roomCharge + ", other_charge=" + otherCharge + ", entry_date=" + entryDate + ", dis_date=" + disDate);
 
-	String name=request.getParameter("patientname");
+    Connection conn = (Connection) application.getAttribute("connection");
+    PreparedStatement ps = null;
+    try {
+        ps = conn.prepareStatement("INSERT INTO billing (ID_NO, PNAME, OT_CHARGE, PATHOLOGY, ENT_DATE, DIS_DATE) VALUES (?, ?, ?, ?, ?, ?)");
+        ps.setInt(1, Integer.parseInt(patientId));
+        ps.setString(2, patientName);
+        ps.setDouble(3, otCharge);
+        ps.setDouble(4, Double.parseDouble(pathoCharge));
+        ps.setString(5, entryDate);
+        ps.setString(6, disDate != null && !disDate.isEmpty() ? disDate : null);
 
-	String otherCharge=request.getParameter("otherCharge");
-
-	String pathoCharge=request.getParameter("pathoCharge");
-
-	String miscCharge=request.getParameter("miscCharge");
-
-	String entryDate=request.getParameter("entryDate");
-
-	String disDate=request.getParameter("disDate");
-
-
-
-        Connection con=(Connection)application.getAttribute("connection");
-        PreparedStatement ps=con.prepareStatement("insert into billing(id_no,pname,ot_charge,pathology,misc,ent_date,dis_date) values(?,?,?,?,?,?,?)");
-  
-      	ps.setInt(1,Integer.parseInt(id));
-     	ps.setString(2,name);
-     	ps.setDouble(3,Double.parseDouble(otherCharge));
-     	ps.setDouble(4,Double.parseDouble(pathoCharge));
-     	ps.setDouble(5,Double.parseDouble(miscCharge));
-     	ps.setString(6,entryDate);
-     	ps.setString(7,disDate);
-
-	int i =ps.executeUpdate();
-  
-	if(i>0)
-
-	{
+        int result = ps.executeUpdate();
+        if (result > 0) {
 %>
-<div style="text-align:center;margin-top:25%">
-<font color="green">
-<script type="text/javascript">
-function Redirect()
-{
-    window.location="billing.jsp";
-}
-document.write("<h2>Billing Information Added Successfully</h2><br><Br>");
-document.write("<h3>Redirecting you to home page....</h3>");
-setTimeout('Redirect()', 3000);
-</script>
-</font>
+<div style="text-align: center; margin-top: 25%;">
+    <font color="green">
+        <script>
+            function redirect() { window.location = "billing.jsp"; }
+            document.write("<h2>Billing Information Added Successfully</h2><br><br>");
+            document.write("<h3>Redirecting...</h3>");
+            setTimeout(redirect, 2000);
+        </script>
+    </font>
 </div>
-<%
-	}
-
-	ps.close();
-	con.commit();	
+<%      } else {
+            out.println("<div class='alert alert-danger'>Failed to add billing information.</div>");
+        }
+    } catch (SQLException e) {
+        System.err.println("add_billing_validation.jsp: SQL Error: " + e.getMessage());
+        out.println("<div class='alert alert-danger'>Database error: " + e.getMessage() + "</div>");
+    } catch (NumberFormatException e) {
+        System.err.println("add_billing_validation.jsp: Invalid number format: " + e.getMessage());
+        out.println("<div class='alert alert-danger'>Invalid input format for charges or patient ID.</div>");
+    } finally {
+        if (ps != null) try { ps.close(); } catch (SQLException e) {}
+    }
 %>
+```

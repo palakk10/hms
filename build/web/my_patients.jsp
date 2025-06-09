@@ -1,15 +1,18 @@
-
+```jsp
 <%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
-<%@ page import="java.sql.*, java.net.URLEncoder" %>
+<%@ page import="java.sql.*" %>
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Manage Patients</title>
+    <!-- Bootstrap CSS -->
     <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
     <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap-theme.min.css">
+    <!-- External CSS -->
     <link rel="stylesheet" href="css/style.css">
+    <!-- Inline CSS -->
     <style>
         #adddoctor .form-group { margin-bottom: 15px !important; }
         #adddoctor .panel-body { padding: 15px !important; }
@@ -24,6 +27,7 @@
         #problemDescription { resize: vertical; min-height: 100px; }
         #doctorDisplay { background-color: #f5f5f5; cursor: not-allowed; }
     </style>
+    <!-- JavaScript -->
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
     <script>
@@ -183,7 +187,7 @@
                                     ResultSet rs = null;
                                     try {
                                         ps = c.prepareStatement(
-                                            "SELECT p.ID, p.PNAME, p.GENDER, p.AGE, p.BGROUP, p.PHONE, p.REA_OF_VISIT, p.ROOM_NO, p.BED_NO, p.DOCTOR_ID, d.NAME AS DOCTOR_NAME, p.DATE_AD, p.EMAIL, p.STREET, p.AREA, p.CITY, p.STATE, p.PINCODE, p.COUNTRY FROM PATIENT_INFO p LEFT JOIN DOCTOR_INFO d ON p.DOCTOR_ID = d.ID",
+                                            "SELECT p.ID, p.PNAME, p.GENDER, p.AGE, p.BGROUP, p.PHONE, p.REA_OF_VISIT, p.ROOM_NO, p.BED_NO, p.DOCTOR_ID, d.NAME AS DOCTOR_NAME, p.DATE_AD, p.EMAIL, p.STREET, p.AREA, p.CITY, p.STATE, p.PINCODE, p.COUNTRY FROM PATIENT_INFO p LEFT JOIN DOCTOR_INFO d ON p.DOCTOR_ID = d.ID ORDER BY p.ID",
                                             ResultSet.TYPE_SCROLL_SENSITIVE, ResultSet.CONCUR_UPDATABLE
                                         );
                                         rs = ps.executeQuery();
@@ -198,7 +202,7 @@
                                             Integer room_no = rs.getInt("ROOM_NO") != 0 ? rs.getInt("ROOM_NO") : null;
                                             Integer bed_no = rs.getInt("BED_NO") != 0 ? rs.getInt("BED_NO") : null;
                                             String doc_name = rs.getString("DOCTOR_NAME") != null ? rs.getString("DOCTOR_NAME") : "Not Assigned";
-                                            String admit_date = rs.getString("DATE_AD") != null ? rs.getString("DATE_AD") : "";
+                                            String admit_date = rs.getString("DATE_AD");
                                             String street = rs.getString("STREET");
                                             String area = rs.getString("AREA");
                                             String city = rs.getString("CITY");
@@ -213,7 +217,7 @@
                                             if (pincode != null && !pincode.trim().isEmpty()) address.append(pincode).append(", ");
                                             if (country != null && !country.trim().isEmpty()) address.append(country);
                                             String addressStr = address.toString().replaceAll(",\\s*$", "");
-                                            pageContext.setAttribute("currentDoctorId", rs.getInt("DOCTOR_ID"));
+                                            pageContext.setAttribute("id", rs.getInt("ID"));
                                 %>
                                 <tr>
                                     <td><%=id%></td>
@@ -231,8 +235,8 @@
                                     <td>
                                         <a href="#"><button type="button" class="btn btn-primary" data-toggle="modal" data-target="#myModal<%=id%>"><span class="glyphicon glyphicon-wrench" aria-hidden="true"></span></button></a>
                                         <a href="delete_patient_validation.jsp?patientId=<%=id%>&roomNo=<%=room_no != null ? room_no : ""%>&bedNo=<%=bed_no != null ? bed_no : ""%>" onclick="return confirmDelete()" class="btn btn-danger"><span class="glyphicon glyphicon-trash" aria-hidden="true"></span></a>
-                                        <a href="pathology.jsp?tab=adddoctor&patientId=<%=id%>&patientName=<%=URLEncoder.encode(name, "UTF-8")%>"><button type="button" class="btn btn-success"><span class="glyphicon glyphicon-plus" aria-hidden="true"></span> Add Pathology</button></a>
-                                        <a href="billing.jsp?tab=addBilling&patientId=<%=id%>&patientName=<%=URLEncoder.encode(name, "UTF-8")%>&admitDate=<%=URLEncoder.encode(admit_date, "UTF-8")%>"><button type="button" class="btn btn-info"><span class="glyphicon glyphicon-usd" aria-hidden="true"></span> Billing</button></a>
+                                        <a href="pathology.jsp?tab=adddoctor&patientId=<%=id%>&patientName=<%=java.net.URLEncoder.encode(name, "UTF-8")%>"><button type="button" class="btn btn-success"><span class="glyphicon glyphicon-plus" aria-hidden="true"></span> Add Pathology</button></a>
+                                        <a href="billing.jsp?tab=adddoctor&patientId=<%=id%>&patientName=<%=java.net.URLEncoder.encode(name, "UTF-8")%>"><button type="button" class="btn btn-info"><span class="glyphicon glyphicon-usd" aria-hidden="true"></span> Billing</button></a>
                                     </td>
                                 </tr>
                                 <%
@@ -285,7 +289,7 @@
                                 <div class="modal-content">
                                     <div class="modal-header">
                                         <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
-                                        <h4 class="modal-title" id="aria-label">Edit Patient</h4>
+                                        <h4 class="modal-title" id="aria-label-<%=id%>">Edit Patient Information</h4>
                                     </div>
                                     <div class="modal-body">
                                         <div class="panel">
