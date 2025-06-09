@@ -97,11 +97,6 @@
             console.log("Calculated charges: " + charges);
         }
 
-        function initializeEditModal(formId) {
-            console.log("Initializing edit modal for: " + formId);
-            calculateCharges(formId);
-        }
-
         $(document).ready(function() {
             console.log("jQuery loaded successfully");
             var urlParams = new URLSearchParams(window.location.search);
@@ -202,7 +197,7 @@
                                         <td><%= ctscan %> (<%= ctCount %>)</td>
                                         <td><%= charges %></td>
                                         <td>
-                                            <a href="#" data-bs-toggle="modal" data-bs-target="#editModal<%= pathologyId %>" onclick="initializeEditModal('editForm<%= pathologyId %>')"><button type="button" class="btn btn-primary"><span class="glyphicon glyphicon-wrench"></span></button></a>
+                                            <a href="edit_patho_validation.jsp?pathologyId=<%= pathologyId %>" class="btn btn-primary"><span class="glyphicon glyphicon-wrench"></span></a>
                                             <a href="delete_patho_validation.jsp?pathologyId=<%= pathologyId %>" onclick="return confirmDelete()" class="btn btn-danger"><span class="glyphicon glyphicon-trash"></span></a>
                                         </td>
                                     </tr>
@@ -221,127 +216,6 @@
                                 </tbody>
                             </table>
                         </div>
-                        <!-- Edit Pathology Modals -->
-                        <%
-                            try {
-                                pstmt = conn.prepareStatement("SELECT * FROM pathology ORDER BY pathology_id DESC", ResultSet.TYPE_SCROLL_SENSITIVE, ResultSet.CONCUR_UPDATABLE);
-                                rs = pstmt.executeQuery();
-                                while (rs.next()) {
-                                    String xray = rs.getString("X_RAYS") != null ? rs.getString("X_RAYS") : "None";
-                                    int xrayCount = rs.getInt("xray_count");
-                                    String usound = rs.getString("U_SOUND") != null ? rs.getString("U_SOUND") : "None";
-                                    int usoundCount = rs.getInt("us_count");
-                                    String bt = rs.getString("B_TEST") != null ? rs.getString("B_TEST") : "None";
-                                    int btCount = rs.getInt("bt_count");
-                                    String ctscan = rs.getString("CT_SCAN") != null ? rs.getString("CT_SCAN") : "None";
-                                    int ctCount = rs.getInt("ct_count");
-                                    String name = rs.getString("PNAME");
-                                    int id = rs.getInt("ID");
-                                    int charges = rs.getInt("CHARGES");
-                                    int pathologyId = rs.getInt("pathology_id");
-                        %>
-                        <div class="modal fade" id="editModal<%= pathologyId %>" tabindex="-1" role="dialog" aria-labelledby="editModalLabel<%= pathologyId %>">
-                            <div class="modal-dialog" role="document">
-                                <div class="modal-content">
-                                    <div class="modal-header">
-                                        <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
-                                        <h4 class="modal-title" id="editModalLabel<%= pathologyId %>">Edit Pathology Information</h4>
-                                    </div>
-                                    <div class="modal-body">
-                                        <div class="panel panel-default">
-                                            <div class="panel-body">
-                                                <form class="form-horizontal" id="editForm<%= pathologyId %>" action="edit_patho_validation.jsp" method="post">
-                                                    <div class="form-group">
-                                                        <label class="col-sm-2 control-label">Patient Id:</label>
-                                                        <div class="col-sm-10">
-                                                            <input type="number" class="form-control" name="patientid" value="<%= id %>" readonly>
-                                                        </div>
-                                                    </div>
-                                                    <div class="form-group">
-                                                        <label class="col-sm-2 control-label">Patient Name</label>
-                                                        <div class="col-sm-10">
-                                                            <input type="text" class="form-control" name="patientname" value="<%= name %>" required>
-                                                        </div>
-                                                    </div>
-                                                    <div class="form-group">
-                                                        <label class="col-sm-2 control-label">X-Ray</label>
-                                                        <div class="col-sm-5">
-                                                            <select class="form-control" name="xray" onchange="calculateCharges('editForm<%= pathologyId %>')">
-                                                                <option <%= xray.equals("None") ? "selected" : "" %>>None</option>
-                                                                <option <%= xray.equals("Positive") ? "selected" : "" %>>Positive</option>
-                                                                <option <%= xray.equals("Negative") ? "selected" : "" %>>Negative</option>
-                                                            </select>
-                                                        </div>
-                                                        <div class="col-sm-5">
-                                                            <input type="number" class="form-control" name="xray_count" value="<%= xrayCount %>" min="0" onchange="calculateCharges('editForm<%= pathologyId %>')">
-                                                        </div>
-                                                    </div>
-                                                    <div class="form-group">
-                                                        <label class="col-sm-2 control-label">UltraSound</label>
-                                                        <div class="col-sm-5">
-                                                            <select class="form-control" name="usound" onchange="calculateCharges('editForm<%= pathologyId %>')">
-                                                                <option <%= usound.equals("None") ? "selected" : "" %>>None</option>
-                                                                <option <%= usound.equals("Positive") ? "selected" : "" %>>Positive</option>
-                                                                <option <%= usound.equals("Negative") ? "selected" : "" %>>Negative</option>
-                                                            </select>
-                                                        </div>
-                                                        <div class="col-sm-5">
-                                                            <input type="number" class="form-control" name="usound_count" value="<%= usoundCount %>" min="0" onchange="calculateCharges('editForm<%= pathologyId %>')">
-                                                        </div>
-                                                    </div>
-                                                    <div class="form-group">
-                                                        <label class="col-sm-2 control-label">Blood Test</label>
-                                                        <div class="col-sm-5">
-                                                            <select class="form-control" name="bt" onchange="calculateCharges('editForm<%= pathologyId %>')">
-                                                                <option <%= bt.equals("None") ? "selected" : "" %>>None</option>
-                                                                <option <%= bt.equals("Positive") ? "selected" : "" %>>Positive</option>
-                                                                <option <%= bt.equals("Negative") ? "selected" : "" %>>Negative</option>
-                                                            </select>
-                                                        </div>
-                                                        <div class="col-sm-5">
-                                                            <input type="number" class="form-control" name="bt_count" value="<%= btCount %>" min="0" onchange="calculateCharges('editForm<%= pathologyId %>')">
-                                                        </div>
-                                                    </div>
-                                                    <div class="form-group">
-                                                        <label class="col-sm-2 control-label">CT-Scan</label>
-                                                        <div class="col-sm-5">
-                                                            <select class="form-control" name="ctscan" onchange="calculateCharges('editForm<%= pathologyId %>')">
-                                                                <option <%= ctscan.equals("None") ? "selected" : "" %>>None</option>
-                                                                <option <%= ctscan.equals("Positive") ? "selected" : "" %>>Positive</option>
-                                                                <option <%= ctscan.equals("Negative") ? "selected" : "" %>>Negative</option>
-                                                            </select>
-                                                        </div>
-                                                        <div class="col-sm-5">
-                                                            <input type="number" class="form-control" name="ct_count" value="<%= ctCount %>" min="0" onchange="calculateCharges('editForm<%= pathologyId %>')">
-                                                        </div>
-                                                    </div>
-                                                    <div class="form-group">
-                                                        <label class="col-sm-2 control-label">Charges</label>
-                                                        <div class="col-sm-10">
-                                                            <input type="number" class="form-control" name="charges" value="<%= charges %>" readonly>
-                                                        </div>
-                                                    </div>
-                                                    <input type="hidden" name="pathologyId" value="<%= pathologyId %>">
-                                                    <div class="modal-footer">
-                                                        <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
-                                                        <input type="submit" class="btn btn-primary" value="Update">
-                                                    </div>
-                                                </form>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <%
-                                }
-                            } catch (SQLException e) {
-                                out.println("<div class='alert alert-danger'>Error loading pathology modals: " + e.getMessage() + "</div>");
-                            } finally {
-                                if (rs != null) try { rs.close(); } catch (SQLException e) {}
-                                if (pstmt != null) try { pstmt.close(); } catch (SQLException e) {}
-                            }
-                        %>
                         <!-- Add Pathology Form -->
                         <div id="adddoctor" class="tab-pane fade">
                             <div class="panel panel-default">
