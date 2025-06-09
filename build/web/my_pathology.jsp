@@ -8,7 +8,7 @@
         }
     </script>
 </head>
-<%@include file="header.html"%>
+<%@include file="header.jsp"%>
 <body>
     <div class="row">
         <%@include file="menu_patient.jsp"%>

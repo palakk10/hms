@@ -1,109 +1,39 @@
+
 <%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
-<%@ page import="java.sql.*" %>
+<%@ page import="java.sql.*, java.net.URLEncoder" %>
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Manage Patients</title>
-    <!-- Bootstrap CSS -->
     <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
     <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap-theme.min.css">
-    <!-- External CSS -->
     <link rel="stylesheet" href="css/style.css">
-    <!-- Inline CSS -->
     <style>
-        #adddoctor .form-group {
-            margin-bottom: 15px !important;
-        }
-        #adddoctor .panel-body {
-            padding: 15px !important;
-        }
-        #adddoctor .control-label {
-            padding-right: 0;
-        }
-        #adddoctor {
-            margin: 0 !important;
-            padding: 5px !important;
-            background-color: #f0f8ff;
-        }
-        .panel, .panel-body, .tab-content, .row {
-            margin: 0 !important;
-            padding: 0 !important;
-        }
-        .maincontent {
-            position: relative !important;
-            min-height: 603px !important;
-        }
-        .contentinside {
-            margin-top: 10px !important;
-        }
-        .header, .navbar, .nav-tabs {
-            margin: 0 !important;
-            padding: 0 !important;
-        }
-        .panel-heading {
-            padding: 10px 15px !important;
-        }
-        #reasonOfVisit {
-            height: 34px;
-            width: 100%;
-        }
-        #problemDescription {
-            resize: vertical;
-            min-height: 100px;
-        }
-        #doctorDisplay {
-            background-color: #f5f5f5;
-            cursor: not-allowed;
-        }
+        #adddoctor .form-group { margin-bottom: 15px !important; }
+        #adddoctor .panel-body { padding: 15px !important; }
+        #adddoctor .control-label { padding-right: 0; }
+        #adddoctor { margin: 0 !important; padding: 5px !important; background-color: #f0f8ff; }
+        .panel, .panel-body, .tab-content, .row { margin: 0 !important; padding: 0 !important; }
+        .maincontent { position: relative !important; min-height: 603px !important; }
+        .contentinside { margin-top: 10px !important; }
+        .header, .navbar, .nav-tabs { margin: 0 !important; padding: 0 !important; }
+        .panel-heading { padding: 10px 15px !important; }
+        #reasonOfVisit { height: 34px; width: 100%; }
+        #problemDescription { resize: vertical; min-height: 100px; }
+        #doctorDisplay { background-color: #f5f5f5; cursor: not-allowed; }
     </style>
-    <!-- JavaScript -->
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
     <script>
         function confirmDelete() {
             return confirm("Do You Really Want to Delete Patient?");
         }
-
-        // Function to retrieve available beds for a selected room
         function retrieveBeds() {
             var roomNo = $('#roomNo').val();
             var bedSelect = $('#bedNo');
             bedSelect.prop('disabled', true).html('<option value="">Loading...</option>');
-            
-            if (roomNo) {
-                $.ajax({
-                    url: 'retrieve_beds_validation.jsp',
-                    type: 'POST',
-                    data: { roomNo: roomNo },
-                    success: function(data) {
-                        bedSelect.html(data);
-                        bedSelect.prop('disabled', false);
-                        if (bedSelect.find('option').length <= 1) {
-                            bedSelect.html('<option value="">No available beds</option>');
-                        }
-                    },
-                    error: function(jqXHR, textStatus, errorThrown) {
-                        bedSelect.html('<option value="">Error loading beds</option>');
-                        bedSelect.prop('disabled', true);
-                        alert('Error fetching beds: ' + textStatus);
-                        console.error('AJAX error:', textStatus, errorThrown);
-                    },
-                    cache: false // Prevent AJAX caching
-                });
-            } else {
-                bedSelect.html('<option value="">Select Bed</option>');
-                bedSelect.prop('disabled', true);
-            }
-        }
-
-        // Function to retrieve beds for edit modal
-        function retrieveBeds2(modalId) {
-            var roomNo = $('#roomNo' + modalId).val();
-            var bedSelect = $('#bedNo' + modalId);
-            bedSelect.prop('disabled', true).html('<option value="">Loading...</option>');
-            
             if (roomNo) {
                 $.ajax({
                     url: 'retrieve_beds_validation.jsp',
@@ -129,19 +59,43 @@
                 bedSelect.prop('disabled', true);
             }
         }
-
+        function retrieveBeds2(modalId) {
+            var roomNo = $('#roomNo' + modalId).val();
+            var bedSelect = $('#bedNo' + modalId);
+            bedSelect.prop('disabled', true).html('<option value="">Loading...</option>');
+            if (roomNo) {
+                $.ajax({
+                    url: 'retrieve_beds_validation.jsp',
+                    type: 'POST',
+                    data: { roomNo: roomNo },
+                    success: function(data) {
+                        bedSelect.html(data);
+                        bedSelect.prop('disabled', false);
+                        if (bedSelect.find('option').length <= 1) {
+                            bedSelect.html('<option value="">No available beds</option>');
+                        }
+                    },
+                    error: function(jqXHR, textStatus, errorThrown) {
+                        bedSelect.html('<option value="">Error loading beds</option>');
+                        bedSelect.prop('disabled', true);
+                        alert('Error fetching beds: ' + textStatus);
+                        console.error('AJAX error:', textStatus, errorThrown);
+                    },
+                    cache: false
+                });
+            } else {
+                bedSelect.html('<option value="">Select Bed</option>');
+                bedSelect.prop('disabled', true);
+            }
+        }
         $(document).ready(function() {
-            // Trigger bed retrieval when room changes
             $('#roomNo').on('change', retrieveBeds);
-
-            // Form validation
             $('#addPatientForm').on('submit', function(e) {
                 var phone = $('#phone').val().trim();
                 var pincode = $('#pincode').val().trim();
                 var pwd = $('#pwd').val().trim();
                 var roomNo = $('#roomNo').val();
                 var bedNo = $('#bedNo').val();
-
                 if (!phone.match(/^\d{10}$/)) {
                     alert("Phone must be exactly 10 digits.");
                     e.preventDefault();
@@ -159,8 +113,6 @@
                     e.preventDefault();
                 }
             });
-
-            // Doctor assignment based on Reason of Visit
             $('#reasonOfVisit').on('change', function() {
                 var reason = $(this).val();
                 if (reason) {
@@ -184,7 +136,7 @@
                             $('#doct').val('');
                             alert('Error fetching doctor.');
                         },
-                        cache: false // Prevent AJAX caching
+                        cache: false
                     });
                 } else {
                     $('#doctorDisplay').val('');
@@ -243,10 +195,10 @@
                                             String bgroup = rs.getString("BGROUP");
                                             String phone = rs.getString("PHONE");
                                             String rov = rs.getString("REA_OF_VISIT");
-                                            int room_no = rs.getInt("ROOM_NO");
-                                            int bed_no = rs.getInt("BED_NO");
+                                            Integer room_no = rs.getInt("ROOM_NO") != 0 ? rs.getInt("ROOM_NO") : null;
+                                            Integer bed_no = rs.getInt("BED_NO") != 0 ? rs.getInt("BED_NO") : null;
                                             String doc_name = rs.getString("DOCTOR_NAME") != null ? rs.getString("DOCTOR_NAME") : "Not Assigned";
-                                            String admit_date = rs.getString("DATE_AD");
+                                            String admit_date = rs.getString("DATE_AD") != null ? rs.getString("DATE_AD") : "";
                                             String street = rs.getString("STREET");
                                             String area = rs.getString("AREA");
                                             String city = rs.getString("CITY");
@@ -272,14 +224,15 @@
                                     <td><%=rov%></td>
                                     <td><%=bgroup%></td>
                                     <td><%=admit_date%></td>
-                                    <td><%=room_no%></td>
-                                    <td><%=bed_no%></td>
+                                    <td><%=room_no != null ? room_no : "N/A"%></td>
+                                    <td><%=bed_no != null ? bed_no : "N/A"%></td>
                                     <td><%=doc_name%></td>
                                     <td><%=addressStr%></td>
                                     <td>
                                         <a href="#"><button type="button" class="btn btn-primary" data-toggle="modal" data-target="#myModal<%=id%>"><span class="glyphicon glyphicon-wrench" aria-hidden="true"></span></button></a>
-                                        <a href="delete_patient_validation.jsp?patientId=<%=id%>&roomNo=<%=room_no%>&bedNo=<%=bed_no%>" onclick="return confirmDelete()" class="btn btn-danger"><span class="glyphicon glyphicon-trash" aria-hidden="true"></span></a>
-                                        <a href="pathology.jsp?tab=adddoctor&patientId=<%=id%>&patientName=<%=java.net.URLEncoder.encode(name, "UTF-8")%>"><button type="button" class="btn btn-success"><span class="glyphicon glyphicon-plus" aria-hidden="true"></span> Add Pathology</button></a>
+                                        <a href="delete_patient_validation.jsp?patientId=<%=id%>&roomNo=<%=room_no != null ? room_no : ""%>&bedNo=<%=bed_no != null ? bed_no : ""%>" onclick="return confirmDelete()" class="btn btn-danger"><span class="glyphicon glyphicon-trash" aria-hidden="true"></span></a>
+                                        <a href="pathology.jsp?tab=adddoctor&patientId=<%=id%>&patientName=<%=URLEncoder.encode(name, "UTF-8")%>"><button type="button" class="btn btn-success"><span class="glyphicon glyphicon-plus" aria-hidden="true"></span> Add Pathology</button></a>
+                                        <a href="billing.jsp?tab=addBilling&patientId=<%=id%>&patientName=<%=URLEncoder.encode(name, "UTF-8")%>&admitDate=<%=URLEncoder.encode(admit_date, "UTF-8")%>"><button type="button" class="btn btn-info"><span class="glyphicon glyphicon-usd" aria-hidden="true"></span> Billing</button></a>
                                     </td>
                                 </tr>
                                 <%
@@ -313,10 +266,10 @@
                                     String bgroup = rsModal.getString("BGROUP");
                                     String phone = rsModal.getString("PHONE");
                                     String rov = rsModal.getString("REA_OF_VISIT");
-                                    int room_no = rsModal.getInt("ROOM_NO");
-                                    int bed_no = rsModal.getInt("BED_NO");
+                                    Integer roomNo = rsModal.getInt("ROOM_NO") != 0 ? rsModal.getInt("ROOM_NO") : null;
+                                    Integer bedNo = rsModal.getInt("BED_NO") != 0 ? rsModal.getInt("BED_NO") : null;
                                     int doctorId = rsModal.getInt("DOCTOR_ID");
-                                    String admit_date = rsModal.getString("DATE_AD");
+                                    String admitDate = rsModal.getString("DATE_AD");
                                     String email = rsModal.getString("EMAIL");
                                     String street = rsModal.getString("STREET");
                                     String area = rsModal.getString("AREA");
@@ -332,7 +285,7 @@
                                 <div class="modal-content">
                                     <div class="modal-header">
                                         <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
-                                        <h4 class="modal-title" id="aria-label-<%=id%>">Edit Patient Information</h4>
+                                        <h4 class="modal-title" id="aria-label">Edit Patient</h4>
                                     </div>
                                     <div class="modal-body">
                                         <div class="panel">
@@ -414,7 +367,7 @@
                                                         <label class="col-sm-2 control-label">Room Number</label>
                                                         <div class="col-sm-10">
                                                             <select class="form-control" name="roomNo" id="roomNo<%=id%>" onchange="retrieveBeds2('<%=id%>')" required>
-                                                                <option value="<%=room_no%>" selected><%=room_no%></option>
+                                                                <option value="<%=roomNo != null ? roomNo : ""%>" selected><%=roomNo != null ? roomNo : "Select Room"%></option>
                                                                 <%
                                                                     PreparedStatement ps1 = null;
                                                                     ResultSet rs1 = null;
@@ -423,7 +376,7 @@
                                                                         rs1 = ps1.executeQuery();
                                                                         while (rs1.next()) {
                                                                             int roomNo1 = rs1.getInt(1);
-                                                                            if (roomNo1 != room_no) {
+                                                                            if (roomNo == null || roomNo1 != roomNo) {
                                                                 %>
                                                                 <option value="<%=roomNo1%>"><%=roomNo1%></option>
                                                                 <%
@@ -441,17 +394,17 @@
                                                         <label class="col-sm-2 control-label">Bed No.</label>
                                                         <div class="col-sm-10">
                                                             <select class="form-control" name="bed_no" id="bedNo<%=id%>" required>
-                                                                <option value="<%=bed_no%>" selected><%=bed_no%></option>
+                                                                <option value="<%=bedNo != null ? bedNo : ""%>" selected><%=bedNo != null ? bedNo : "Select Bed"%></option>
                                                                 <%
                                                                     PreparedStatement psBeds = null;
                                                                     ResultSet rsBeds = null;
                                                                     try {
                                                                         psBeds = c.prepareStatement("SELECT BED_NO FROM room_info WHERE ROOM_NO = ? AND STATUS = 'Available' ORDER BY BED_NO", ResultSet.TYPE_SCROLL_SENSITIVE, ResultSet.CONCUR_UPDATABLE);
-                                                                        psBeds.setInt(1, room_no);
+                                                                        psBeds.setInt(1, roomNo != null ? roomNo : 0);
                                                                         rsBeds = psBeds.executeQuery();
                                                                         while (rsBeds.next()) {
                                                                             int bedNo1 = rsBeds.getInt("BED_NO");
-                                                                            if (bedNo1 != bed_no) {
+                                                                            if (bedNo == null || bedNo1 != bedNo) {
                                                                 %>
                                                                 <option value="<%=bedNo1%>"><%=bedNo1%></option>
                                                                 <%
@@ -503,7 +456,7 @@
                                                     <div class="form-group">
                                                         <label class="col-sm-2 control-label">Admission Date</label>
                                                         <div class="col-sm-10">
-                                                            <input type="date" class="form-control" name="admit_date" value="<%=admit_date%>" placeholder="Admission Date" required>
+                                                            <input type="date" class="form-control" name="admit_date" value="<%=admitDate%>" placeholder="Admission Date" required>
                                                         </div>
                                                     </div>
                                                     <div class="form-group">
@@ -539,11 +492,11 @@
                             </div>
                         </div>
                         <%
-                            }
-                        } catch (SQLException e) {
-                            %>
-                            <div class="alert alert-danger">Error loading patient modals: <%=e.getMessage() %></div>
-                            <%
+                                }
+                            } catch (SQLException e) {
+                        %>
+                        <div class="alert alert-danger">Error loading patient modals: <%=e.getMessage()%></div>
+                        <%
                             } finally {
                                 if (rsModal != null) try { rsModal.close(); } catch (SQLException e) {}
                                 if (psModal != null) try { psModal.close(); } catch (SQLException e) {}
@@ -678,7 +631,7 @@
                                                                 <option value="" disabled>No available rooms</option>
                                                                 <%
                                                             } else {
-                                                                rs3.beforeFirst(); // Fixed: Changed from rs3.reset() to rs3.beforeFirst()
+                                                                rs3.beforeFirst();
                                                                 while (rs3.next()) {
                                                                     int roomNo = rs3.getInt("ROOM_NO");
                                                                     %>
@@ -761,3 +714,4 @@
     </div>
 </body>
 </html>
+```

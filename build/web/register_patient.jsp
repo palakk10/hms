@@ -1,3 +1,5 @@
+```jsp
+<%@ page import="java.sql.*" %>
 <!DOCTYPE html>
 <%
     response.setHeader("cache-control", "no-cache,no-store,must-revalidate");
@@ -121,52 +123,49 @@
                         </div>
 
                         <!-- Reason of Visit dropdown with scrollbar on overflow -->
+                        <%
+                            // Retrieve connection from ServletContext
+                            Connection conn = (Connection) application.getAttribute("connection");
+                            Statement stmt = null;
+                            ResultSet rs = null;
+
+                            try {
+                                if (conn == null) {
+                                    out.println("Error: Database connection not available.");
+                                } else {
+                                    stmt = conn.createStatement();
+                                    // Query to fetch reasons from reason_department_mapping
+                                    rs = stmt.executeQuery("SELECT REASON FROM reason_department_mapping ORDER BY REASON");
+                        %>
                         <div class="form-group">
                             <label class="col-sm-2 control-label">Reason Of Visit</label>
                             <div class="col-sm-10">
                                 <select name="rov" class="form-control" required>
                                     <option value="">-- Select Reason --</option>
-                                    <option>Fever</option>
-                                    <option>Cold / Cough</option>
-                                    <option>Headache / Migraine</option>
-                                    <option>Chest Pain</option>
-                                    <option>Shortness of Breath / Difficulty Breathing</option>
-                                    <option>Abdominal Pain / Stomach Ache</option>
-                                    <option>Back Pain</option>
-                                    <option>Joint Pain / Arthritis</option>
-                                    <option>Skin Rash / Allergies</option>
-                                    <option>Diarrhea / Vomiting</option>
-                                    <option>Fatigue / Weakness</option>
-                                    <option>High Blood Pressure (Hypertension)</option>
-                                    <option>Diabetes Checkup / High Blood Sugar</option>
-                                    <option>Infection (e.g. Urinary Tract Infection, Respiratory Infection)</option>
-                                    <option>Injury / Trauma (e.g. fractures, cuts, bruises)</option>
-                                    <option>Pregnancy Checkup / Antenatal Care</option>
-                                    <option>Mental Health Issues (Anxiety, Depression)</option>
-                                    <option>Vision Problems / Eye Pain</option>
-                                    <option>Earache / Hearing Problems</option>
-                                    <option>Dental Pain</option>
-                                    <option>Follow-up / Routine Checkup</option>
-                                    <option>Medication Refill</option>
-                                    <option>Allergy Reaction</option>
-                                    <option>Asthma Attack</option>
-                                    <option>Skin Infection / Boils</option>
-                                    <option>Weight Loss / Gain</option>
-                                    <option>Blood Disorders (Anemia, Bleeding)</option>
-                                    <option>Palpitations / Irregular Heartbeat</option>
-                                    <option>Neurological Problems (Seizures, Dizziness)</option>
-                                    <option>Swelling (Edema)</option>
-                                    <option>Urinary Problems / Painful Urination</option>
-                                    <option>Sore Throat</option>
-                                    <option>Cold Sores / Mouth Ulcers</option>
-                                    <option>Chest Infection / Pneumonia</option>
-                                    <option>Flu / Influenza</option>
-                                    <option>COVID-19 Symptoms</option>
-                                    <option>Vaccination</option>
-                                    <option>Physical Examination / Health Screening</option>
+                                    <% 
+                                        // Loop through the result set to populate options
+                                        while (rs.next()) {
+                                            String reason = rs.getString("REASON");
+                                    %>
+                                        <option value="<%= reason %>"><%= reason %></option>
+                                    <% 
+                                        }
+                                    %>
                                 </select>
                             </div>
                         </div>
+                        <%
+                                }
+                            } catch (Exception e) {
+                                e.printStackTrace();
+                                out.println("Error fetching reasons: " + e.getMessage());
+                            } finally {
+                                // Close resources
+                                if (rs != null) try { rs.close(); } catch (SQLException e) { e.printStackTrace(); }
+                                if (stmt != null) try { stmt.close(); } catch (SQLException e) { e.printStackTrace(); }
+                                // Do NOT close conn here, as it is managed by ServletContextListener
+                            }
+                        %>
 
                         <!-- Textarea for detailed description -->
                         <div class="form-group">
@@ -232,3 +231,4 @@
 <script src="js/bootstrap.min.js"></script>
 </body>
 </html>
+```
