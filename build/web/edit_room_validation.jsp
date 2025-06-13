@@ -21,7 +21,7 @@
             throw new Exception("Room Type is required.");
         }
 
-        Connection con = (Connection)application.getAttribute("connection");
+            Connection con = (Connection)application.getAttribute("connection");
 
         // Check if bed is available
         PreparedStatement checkPs = con.prepareStatement("SELECT status FROM room_info WHERE room_no=? AND bed_no=?");
