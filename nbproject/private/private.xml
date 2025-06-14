@@ -3,29 +3,38 @@
     <editor-bookmarks xmlns="http://www.netbeans.org/ns/editor-bookmarks/2" lastBookmarkId="0"/>
     <open-files xmlns="http://www.netbeans.org/ns/projectui-open-files/2">
         <group>
-            <file>file:/C:/Users/Lenovo/OneDrive/Documents/GitHub/hms/src/java/PatientRegistrationServlet.java</file>
-            <file>file:/C:/Users/Lenovo/OneDrive/Documents/GitHub/hms/web/edit_dept_validation.jsp</file>
+            <file>file:/C:/Users/Lenovo/OneDrive/Documents/GitHub/hms/web/login_failed.jsp</file>
             <file>file:/C:/Users/Lenovo/OneDrive/Documents/GitHub/hms/web/add_patient_validation.jsp</file>
             <file>file:/C:/Users/Lenovo/OneDrive/Documents/GitHub/hms/web/department.jsp</file>
+            <file>file:/C:/Users/Lenovo/OneDrive/Documents/GitHub/hms/web/receptionist.jsp</file>
+            <file>file:/C:/Users/Lenovo/OneDrive/Documents/GitHub/hms/web/add_case_receptionist.jsp</file>
             <file>file:/C:/Users/Lenovo/OneDrive/Documents/GitHub/hms/web/edit_doct_validation.jsp</file>
-            <file>file:/C:/Users/Lenovo/OneDrive/Documents/GitHub/hms/web/delete_room_validation.jsp</file>
             <file>file:/C:/Users/Lenovo/OneDrive/Documents/GitHub/hms/web/my_patients.jsp</file>
-            <file>file:/C:/Users/Lenovo/OneDrive/Documents/GitHub/hms/web/add_prescription.jsp</file>
-            <file>file:/C:/Users/Lenovo/OneDrive/Documents/GitHub/hms/web/edit_patient_validation.jsp</file>
             <file>file:/C:/Users/Lenovo/OneDrive/Documents/GitHub/hms/web/register_patient.jsp</file>
-            <file>file:/C:/Users/Lenovo/OneDrive/Documents/GitHub/hms/web/edit_room_validation.jsp</file>
             <file>file:/C:/Users/Lenovo/OneDrive/Documents/GitHub/hms/web/delete_dept_validation.jsp</file>
-            <file>file:/C:/Users/Lenovo/OneDrive/Documents/GitHub/hms/web/register_patient2.jsp</file>
             <file>file:/C:/Users/Lenovo/OneDrive/Documents/GitHub/hms/web/delete_prescription.jsp</file>
             <file>file:/C:/Users/Lenovo/OneDrive/Documents/GitHub/hms/web/patients.jsp</file>
+            <file>file:/C:/Users/Lenovo/OneDrive/Documents/GitHub/hms/web/receptionist_menu.jsp</file>
+            <file>file:/C:/Users/Lenovo/OneDrive/Documents/GitHub/hms/web/room.jsp</file>
+            <file>file:/C:/Users/Lenovo/OneDrive/Documents/GitHub/hms/web/add_patient_receptionist.jsp</file>
+            <file>file:/C:/Users/Lenovo/OneDrive/Documents/GitHub/hms/web/header.jsp</file>
+            <file>file:/C:/Users/Lenovo/OneDrive/Documents/GitHub/hms/src/java/PatientRegistrationServlet.java</file>
+            <file>file:/C:/Users/Lenovo/OneDrive/Documents/GitHub/hms/web/edit_dept_validation.jsp</file>
+            <file>file:/C:/Users/Lenovo/OneDrive/Documents/GitHub/hms/web/header_patient.jsp</file>
+            <file>file:/C:/Users/Lenovo/OneDrive/Documents/GitHub/hms/web/add_prescription.jsp</file>
+            <file>file:/C:/Users/Lenovo/OneDrive/Documents/GitHub/hms/web/edit_patient_validation.jsp</file>
+            <file>file:/C:/Users/Lenovo/OneDrive/Documents/GitHub/hms/web/edit_room_validation.jsp</file>
+            <file>file:/C:/Users/Lenovo/OneDrive/Documents/GitHub/hms/web/register_patient2.jsp</file>
             <file>file:/C:/Users/Lenovo/OneDrive/Documents/GitHub/hms/web/pathology.jsp</file>
             <file>file:/C:/Users/Lenovo/OneDrive/Documents/GitHub/hms/web/update_prescription.jsp</file>
-            <file>file:/C:/Users/Lenovo/OneDrive/Documents/GitHub/hms/web/room.jsp</file>
             <file>file:/C:/Users/Lenovo/OneDrive/Documents/GitHub/hms/web/edit_patho_validation.jsp</file>
             <file>file:/C:/Users/Lenovo/OneDrive/Documents/GitHub/hms/web/add_room_validation.jsp</file>
+            <file>file:/C:/Users/Lenovo/OneDrive/Documents/GitHub/hms/web/menu.jsp</file>
             <file>file:/C:/Users/Lenovo/OneDrive/Documents/GitHub/hms/web/add_dept_validation.jsp</file>
             <file>file:/C:/Users/Lenovo/OneDrive/Documents/GitHub/hms/web/my_pathology.jsp</file>
             <file>file:/C:/Users/Lenovo/OneDrive/Documents/GitHub/hms/web/doctor_page.jsp</file>
+            <file>file:/C:/Users/Lenovo/OneDrive/Documents/GitHub/hms/web/login_validation.jsp</file>
+            <file>file:/C:/Users/Lenovo/OneDrive/Documents/GitHub/hms/web/index.jsp</file>
         </group>
     </open-files>
 </project-private>
