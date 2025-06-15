@@ -7,7 +7,7 @@ ResultSet rs=null;
     String role=request.getParameter("userrole");
     String email=request.getParameter("email");
     String password=request.getParameter("password");
-%>        
+%>
 <%
     Connection c=(Connection)application.getAttribute("connection");
     if(role.equals("admin"))
@@ -40,7 +40,6 @@ ResultSet rs=null;
             String name=rs.getString("PNAME");
             int doctorId = rs.getInt("DOCTOR_ID");
             
-            // Get doctor's name
             PreparedStatement psDoctor = c.prepareStatement("SELECT NAME FROM doctor_info WHERE ID = ?");
             psDoctor.setInt(1, doctorId);
             ResultSet rsDoctor = psDoctor.executeQuery();
@@ -73,7 +72,6 @@ ResultSet rs=null;
             String name=rs.getString("NAME");
             int deptId = rs.getInt("DEPT_ID");
             
-            // Get department name
             PreparedStatement psDept = c.prepareStatement("SELECT NAME FROM department WHERE ID = ?");
             psDept.setInt(1, deptId);
             ResultSet rsDept = psDept.executeQuery();
@@ -90,6 +88,24 @@ ResultSet rs=null;
             session.setAttribute("name",name);
             session.setAttribute("dept",deptName);
             response.sendRedirect("doctor_page.jsp");
+        }
+        else
+            response.sendRedirect("login_failed.jsp");
+    }
+    else if(role.equals("receptionist"))
+    {
+        ps=c.prepareStatement("select * from staffinfo where email=? and password=? and desig=?");
+        ps.setString(1,email);
+        ps.setString(2,password);
+        ps.setString(3,role);
+        rs=ps.executeQuery();
+        if(rs.next())
+        {
+            String name=rs.getString("NAME");
+            session.setAttribute("email",email);
+            session.setAttribute("role",role);
+            session.setAttribute("name",name);
+            response.sendRedirect("receptionist.jsp");
         }
         else
             response.sendRedirect("login_failed.jsp");

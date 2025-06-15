@@ -1,4 +1,4 @@
-```jsp
+
 <%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
 <%@ page import="java.sql.*" %>
 <%
@@ -14,7 +14,12 @@
             return;
         }
         System.out.println("get_pathology_charges.jsp: Fetching charges for patientId=" + patientId);
-        ps = conn.prepareStatement("SELECT SUM(CHARGES) AS total_charges FROM pathology WHERE ID = ?");
+        ps = conn.prepareStatement(
+            "SELECT SUM(pt.PRICE) AS total_charges " +
+            "FROM pathology p " +
+            "JOIN pathology_test pt ON p.TEST_ID = pt.TEST_ID " +
+            "WHERE p.ID = ?"
+        );
         ps.setInt(1, Integer.parseInt(patientId));
         rs = ps.executeQuery();
         if (rs.next()) {
@@ -44,4 +49,3 @@
         if (ps != null) try { ps.close(); } catch (SQLException e) {}
     }
 %>
-```
