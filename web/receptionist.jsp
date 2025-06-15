@@ -1,14 +1,14 @@
-```jsp
-<%@page import="java.sql.*"%>
+<%@page import="java.sql.*, javax.servlet.http.HttpSession"%>
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <%
-    response.setHeader("cache-control", "no-cache, no-store, must-revalidate");
-    String emaill = (String) session.getAttribute("email");
-    String namee = (String) session.getAttribute("name");
-    if (emaill == null || namee == null) {
+    response.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+    String email = (String) session.getAttribute("email");
+    String name = (String) session.getAttribute("name");
+    if (email == null || name == null) {
         response.sendRedirect("index.jsp");
-    } else {
+        return;
+    }
 %>
 <head>
     <meta charset="UTF-8">
@@ -16,49 +16,188 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link href="images/logo.png" rel="icon"/>
     <title>Receptionist Dashboard</title>
+    <!-- Bootstrap and jQuery (local assets only to avoid conflicts) -->
     <link href="css/bootstrap.min.css" rel="stylesheet">
-    <link href="css/bootstrap-theme.min.css" rel="stylesheet">
-    <link href="css/style.css" rel="stylesheet">
     <script src="js/jquery.js"></script>
     <script src="js/bootstrap.min.js"></script>
     <style>
-        body { padding-top: 60px; }
-        .header { 
-            display: block !important; 
-            visibility: visible !important; 
-            position: fixed !important; 
-            top: 0; 
-            width: 100%; 
-            z-index: 1000 !important; 
+    body {
+        padding-top: 50px; /* Space for fixed navbar */
+        /* Updated background image path - replace 'images/receptionist_background.jpg' with your actual image path */
+        background: url('images/receptionist_background.jpg') no-repeat center center fixed;
+        /* Fallback placeholder for testing - replace or remove in production */
+        background: url('https://via.placeholder.com/1920x1080?text=Receptionist+Background') no-repeat center center fixed;
+        background-size: cover;
+        position: relative;
+    }
+    /* Semi-transparent overlay for readability */
+    body::before {
+        content: '';
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(255, 255, 255, 0.7); /* White overlay with 70% opacity */
+        z-index: -1;
+    }
+    .navbar-custom {
+        position: fixed;
+        top: 0;
+        width: 100%;
+        z-index: 1000;
+        background-color: #337ab7;
+        border-color: #2e6da4;
+    }
+    .navbar-custom .navbar-brand,
+    .navbar-custom .navbar-nav > li > a {
+        color: #fff;
+    }
+    .navbar-custom .navbar-nav > li > a:hover,
+    .navbar-custom .navbar-nav > li > a:focus {
+        background-color: #2e6da4;
+    }
+    .maincontent {
+        margin-left: 16.66%; /* Match sidebar width */
+        padding: 20px;
+        background: rgba(255, 255, 255, 0.9); /* Slightly transparent white background for content */
+        border-radius: 5px;
+    }
+    .contentinside {
+        margin-top: 20px;
+    }
+    .panel-heading {
+        background-color: #337ab7 !important;
+        color: #fff !important;
+        font-size: 18px;
+    }
+    .table th {
+        background-color: #f5f5f5;
+    }
+    .modal-header {
+        background-color: #337ab7;
+        color: #fff;
+    }
+    .modal-header .close {
+        color: #fff;
+        opacity: 0.8;
+    }
+    .modal-header .close:hover {
+        opacity: 1;
+    }
+    @media (max-width: 767px) {
+        .maincontent {
+            margin-left: 0;
         }
-        .btn-primary, .btn-info, .btn-warning, .btn-success { 
-            display: inline-block !important; 
-            visibility: visible !important; 
-            margin: 2px; 
-        }
-        .table { display: table !important; visibility: visible !important; }
-        .sidebar { 
-            position: static; 
-            width: 16.66%; 
-            float: left; 
-            margin-top: 60px; 
-        }
-        .content { margin-left: 16.66%; float: left; }
-        .panel { position: relative !important; }
-        .modal { z-index: 1050 !important; }
-    </style>
+    }
+</style>
+    <script>
+        $(document).ready(function() {
+            $('#addCaseModal').on('show.bs.modal', function(event) {
+                var button = $(event.relatedTarget);
+                var patientId = button.data('patient-id');
+                $(this).find('#case_patient_id').val(patientId);
+                // Reset doctor dropdown to prevent stale data
+                $('#case_doctor_id').html('<option value="">Loading...</option>');
+                // Fetch all doctors initially
+                $.ajax({
+                    url: 'getAllDoctors.jsp',
+                    method: 'GET',
+                    dataType: 'json',
+                    success: function(data) {
+                        var doctorSelect = $('#case_doctor_id');
+                        doctorSelect.empty();
+                        doctorSelect.append('<option value="">Select Doctor</option>');
+                        $.each(data, function(index, doctor) {
+                            doctorSelect.append('<option value="' + doctor.id + '">' + doctor.name + '</option>');
+                        });
+                    },
+                    error: function() {
+                        $('#case_doctor_id').html('<option value="">Error loading doctors</option>');
+                    }
+                });
+            });
+
+            // When reason of visit changes, fetch and select the appropriate doctor
+            $('#case_reason').change(function() {
+                var reason = $(this).val();
+                if (reason) {
+                    $.ajax({
+                        url: 'getDoctorByReason.jsp',
+                        method: 'GET',
+                        data: { reason: reason },
+                        dataType: 'json',
+                        success: function(data) {
+                            var doctorSelect = $('#case_doctor_id');
+                            if (data.doctorId && data.doctorName) {
+                                // Ensure the doctor is in the dropdown
+                                if (doctorSelect.find('option[value="' + data.doctorId + '"]').length === 0) {
+                                    doctorSelect.append('<option value="' + data.doctorId + '">' + data.doctorName + '</option>');
+                                }
+                                // Select the doctor
+                                doctorSelect.val(data.doctorId);
+                            } else {
+                                doctorSelect.val('');
+                            }
+                        },
+                        error: function() {
+                            $('#case_doctor_id').val('');
+                            alert('Error fetching doctor for the selected reason.');
+                        }
+                    });
+                } else {
+                    $('#case_doctor_id').val('');
+                }
+            });
+
+            $('#addAdmissionModal').on('show.bs.modal', function(event) {
+                var button = $(event.relatedTarget);
+                var patientId = button.data('patient-id');
+                var modal = $(this);
+                modal.find('#admission_patient_id').val(patientId);
+            });
+
+            $('#room_bed_selection').change(function() {
+                var value = $(this).val();
+                if (value) {
+                    var parts = value.split('|');
+                    $('#room_no').val(parts[0]);
+                    $('#bed_no').val(parts[1]);
+                } else {
+                    $('#room_no').val('');
+                    $('#bed_no').val('');
+                }
+            });
+
+            $('#addDischargeModal').on('show.bs.modal', function(event) {
+                var button = $(event.relatedTarget);
+                var patientId = button.data('patient-id');
+                var admitId = button.data('admit-id');
+                var modal = $(this);
+                modal.find('#discharge_patient_id').val(patientId);
+                modal.find('#discharge_admit_id').val(admitId);
+                var today = new Date('2025-06-15').toISOString().split('T')[0];
+                modal.find('#discharge_date').val(today);
+            });
+        });
+    </script>
 </head>
 <body>
-    <div class="container-fluid">
-        <!-- Header Start -->
-        <div class="row header">
-            <div class="col-md-10">
-                <h2>Hospital Management System</h2>
+    <nav class="navbar navbar-custom navbar-default">
+        <div class="container-fluid">
+            <div class="navbar-header">
+                <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbarCollapse">
+                    <span class="sr-only">Toggle navigation</span>
+                    <span class="icon-bar"></span>
+                    <span class="icon-bar"></span>
+                    <span class="icon-bar"></span>
+                </button>
+                <a class="navbar-brand" href="#">Hospital Management System</a>
             </div>
-            <div class="col-md-2">
-                <ul class="nav nav-pills">
-                    <li class="dropdown dmenu">
-                        <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false"><%=namee.toUpperCase()%> <span class="caret"></span></a>
+            <div class="collapse navbar-collapse" id="navbarCollapse">
+                <ul class="nav navbar-nav navbar-right">
+                    <li class="dropdown">
+                        <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button"><%=name.toUpperCase()%> <span class="caret"></span></a>
                         <ul class="dropdown-menu">
                             <li><a href="profile_receptionist.jsp">Change Profile</a></li>
                             <li role="separator" class="divider"></li>
@@ -68,205 +207,136 @@
                 </ul>
             </div>
         </div>
-        <!-- Header Ends -->
+    </nav>
+    <div class="container-fluid">
         <div class="row">
             <%@include file="receptionist_menu.jsp" %>
-            <div class="col-md-10 content">
-                <!-- Patient Management -->
-                <div class="panel panel-default">
-                    <div class="panel-heading logintitle">Manage Patients</div>
+            <div class="col-md-10 maincontent">
+                <div class="panel panel-default contentinside">
+                    <div class="panel-heading">Patient Management</div>
                     <div class="panel-body">
                         <%
-                            String status = request.getParameter("status");
-                            if ("success".equals(status)) {
-                                out.println("<div class='alert alert-success'>Action performed successfully!</div>");
-                            } else if ("error".equals(status)) {
-                                out.println("<div class='alert alert-danger'>Error performing action.</div>");
+                            String patientMessage = (String) session.getAttribute("patientMessage");
+                            if (patientMessage != null) {
+                                String alertClass = patientMessage.contains("successfully") ? "alert-success" : "alert-danger";
+                        %>
+                        <div class="alert <%=alertClass%> alert-dismissible">
+                            <button type="button" class="close" data-dismiss="alert">×</button>
+                            <%=patientMessage%>
+                        </div>
+                        <%
+                                session.removeAttribute("patientMessage");
+                            }
+                            String dischargeMessage = (String) session.getAttribute("dischargeMessage");
+                            if (dischargeMessage != null) {
+                                String alertClass = dischargeMessage.contains("successfully") ? "alert-success" : "alert-danger";
+                        %>
+                        <div class="alert <%=alertClass%> alert-dismissible">
+                            <button type="button" class="close" data-dismiss="alert">×</button>
+                            <%=dischargeMessage%>
+                        </div>
+                        <%
+                                session.removeAttribute("dischargeMessage");
                             }
                         %>
-                        <div class="row">
-                            <div class="col-md-2">
-                                <button class="btn btn-primary btn-block btn-lg" data-toggle="modal" data-target="#addPatientModal">Add Patient</button>
-                            </div>
-                            <div class="col-md-10">
+                        <button class="btn btn-primary" data-toggle="modal" data-target="#addPatientModal">Add Patient</button>
+                        <br><br>
+                        <%
+                            Connection conn = (Connection) application.getAttribute("connection");
+                            PreparedStatement psPatients = null;
+                            ResultSet rsPatients = null;
+                            PreparedStatement psAdmission = null;
+                            ResultSet rsAdmission = null;
+                            try {
+                                psPatients = conn.prepareStatement("SELECT * FROM patient_info ORDER BY ID");
+                                rsPatients = psPatients.executeQuery();
+                        %>
+                        <table class="table table-bordered table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Patient ID</th>
+                                    <th>Name</th>
+                                    <th>Gender</th>
+                                    <th>Age</th>
+                                    <th>Blood Group</th>
+                                    <th>Phone</th>
+                                    <th>Email</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
                                 <%
-                                    Connection c = (Connection) application.getAttribute("connection");
-                                    if (c == null) {
-                                        out.println("<div class='alert alert-danger'>Error: Database connection is null.</div>");
+                                    if (!rsPatients.isBeforeFirst()) {
+                                        out.println("<tr><td colspan='8'>No patients found.</td></tr>");
                                     } else {
+                                        while (rsPatients.next()) {
+                                            int patientId = rsPatients.getInt("ID");
+                                            String patientName = rsPatients.getString("PNAME");
+                                            String gender = rsPatients.getString("GENDER");
+                                            int age = rsPatients.getInt("AGE");
+                                            String bloodGroup = rsPatients.getString("BGROUP");
+                                            String phone = rsPatients.getString("PHONE");
+                                            String patientEmail = rsPatients.getString("EMAIL");
+                                            psAdmission = conn.prepareStatement(
+                                                "SELECT ADMIT_ID FROM admission WHERE PATIENT_ID = ? AND DISCHARGE_DATE IS NULL"
+                                            );
+                                            psAdmission.setInt(1, patientId);
+                                            rsAdmission = psAdmission.executeQuery();
+                                            boolean hasAdmission = rsAdmission.next();
+                                            int admitId = hasAdmission ? rsAdmission.getInt("ADMIT_ID") : 0;
                                 %>
-                                <table class="table table-bordered">
-                                    <thead>
-                                        <tr>
-                                            <th>#</th>
-                                            <th>Patient Name</th>
-                                            <th>Age</th>
-                                            <th>Sex</th>
-                                            <th>Phone</th>
-                                            <th>Reason Of Visit</th>
-                                            <th>Blood Grp</th>
-                                            <th>Address</th>
-                                            <th>Actions</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        <%
-                                            PreparedStatement ps = null;
-                                            ResultSet rs = null;
-                                            try {
-                                                ps = c.prepareStatement(
-                                                    "SELECT p.ID, p.PNAME, p.AGE, p.GENDER, p.PHONE, " +
-                                                    "(SELECT c.REASON FROM case_master c WHERE c.PATIENT_ID = p.ID ORDER BY c.CASE_DATE DESC LIMIT 1) AS REASON, " +
-                                                    "p.BGROUP, CONCAT(p.STREET, ', ', p.AREA, ', ', p.CITY, ', ', p.STATE, ', ', p.COUNTRY, ', ', p.PINCODE) AS ADDRESS " +
-                                                    "FROM patient_info p"
-                                                );
-                                                rs = ps.executeQuery();
-                                                if (!rs.isBeforeFirst()) {
-                                                    out.println("<tr><td colspan='9'>No patients found.</td></tr>");
-                                                } else {
-                                                    while (rs.next()) {
-                                                        int patientId = rs.getInt("ID");
-                                                        out.println("<tr>");
-                                                        out.println("<td>" + patientId + "</td>");
-                                                        out.println("<td>" + (rs.getString("PNAME") != null ? rs.getString("PNAME") : "-") + "</td>");
-                                                        out.println("<td>" + rs.getInt("AGE") + "</td>");
-                                                        out.println("<td>" + (rs.getString("GENDER") != null ? rs.getString("GENDER") : "-") + "</td>");
-                                                        out.println("<td>" + (rs.getString("PHONE") != null ? rs.getString("PHONE") : "-") + "</td>");
-                                                        out.println("<td>" + (rs.getString("REASON") != null ? rs.getString("REASON") : "-") + "</td>");
-                                                        out.println("<td>" + (rs.getString("BGROUP") != null ? rs.getString("BGROUP") : "-") + "</td>");
-                                                        out.println("<td>" + (rs.getString("ADDRESS") != null ? rs.getString("ADDRESS") : "-") + "</td>");
-                                                        out.println("<td>");
-                                                        out.println("<button class='btn btn-info btn-sm' data-toggle='modal' data-target='#addCaseModal' data-patient-id='" + patientId + "'>Add Case</button> ");
-                                                        out.println("<a href='view_cases.jsp?patient_id=" + patientId + "' class='btn btn-primary btn-sm'>View Cases</a> ");
-                                                        out.println("<button class='btn btn-success btn-sm' data-toggle='modal' data-target='#addPathologyModal' data-patient-id='" + patientId + "'>Add Pathology</button> ");
-                                                        out.println("<button class='btn btn-warning btn-sm' data-toggle='modal' data-target='#editPathologyModal' data-patient-id='" + patientId + "'>Update Pathology</button>");
-                                                        out.println("</td>");
-                                                        out.println("</tr>");
-                                                    }
-                                                }
-                                            } catch (SQLException e) {
-                                                out.println("<tr><td colspan='9'>Error loading patients: " + e.getMessage() + "</td></tr>");
-                                            } finally {
-                                                if (rs != null) try { rs.close(); } catch (SQLException e) {}
-                                                if (ps != null) try { ps.close(); } catch (SQLException e) {}
-                                            }
-                                        %>
-                                    </tbody>
-                                </table>
-                                <% } %>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <!-- Pathology Management -->
-                <div class="panel panel-default">
-                    <div class="panel-heading logintitle">Manage Pathology</div>
-                    <div class="panel-body">
-                        <div class="row">
-                            <div class="col-md-2">
-                                <button class="btn btn-primary btn-block btn-lg" data-toggle="modal" data-target="#addPathologyModal">Add Pathology</button>
-                            </div>
-                            <div class="col-md-10">
-                                <table class="table table-bordered table-striped">
-                                    <thead>
-                                        <tr>
-                                            <th>Pathology ID</th>
-                                            <th>Patient ID</th>
-                                            <th>Patient Name</th>
-                                            <th>Case ID</th>
-                                            <th>Test Name</th>
-                                            <th>Test Date</th>
-                                            <th>Blood Test</th>
-                                            <th>Blood Test Count</th>
-                                            <th>Urinalysis</th>
-                                            <th>Charges</th>
-                                            <th>Actions</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        <%
-                                            PreparedStatement ps = null;
-                                            ResultSet rs = null;
-                                            try {
-                                                ps = c.prepareStatement(
-                                                    "SELECT p.PATHOLOGY_ID, p.ID, pi.PNAME, p.CASE_ID, pt.NAME AS TEST_NAME, p.TEST_DATE, " +
-                                                    "p.B_TEST, p.BT_COUNT, p.URINALYSIS, pt.PRICE " +
-                                                    "FROM pathology p " +
-                                                    "JOIN patient_info pi ON p.ID = pi.ID " +
-                                                    "JOIN pathology_test pt ON p.TEST_ID = pt.TEST_ID " +
-                                                    "ORDER BY p.TEST_DATE DESC"
-                                                );
-                                                rs = ps.executeQuery();
-                                                if (!rs.isBeforeFirst()) {
-                                                    out.println("<tr><td colspan='11'>No pathology records found.</td></tr>");
-                                                } else {
-                                                    while (rs.next()) {
-                                                        out.println("<tr>");
-                                                        out.println("<td>" + rs.getInt("PATHOLOGY_ID") + "</td>");
-                                                        out.println("<td>" + rs.getInt("ID") + "</td>");
-                                                        out.println("<td>" + rs.getString("PNAME") + "</td>");
-                                                        out.println("<td>" + rs.getInt("CASE_ID") + "</td>");
-                                                        out.println("<td>" + rs.getString("TEST_NAME") + "</td>");
-                                                        out.println("<td>" + rs.getDate("TEST_DATE") + "</td>");
-                                                        out.println("<td>" + (rs.getString("B_TEST") != null ? rs.getString("B_TEST") : "-") + "</td>");
-                                                        out.println("<td>" + rs.getInt("BT_COUNT") + "</td>");
-                                                        out.println("<td>" + (rs.getString("URINALYSIS") != null ? rs.getString("URINALYSIS") : "-") + "</td>");
-                                                        out.println("<td>" + String.format("%.2f", rs.getDouble("PRICE")) + "</td>");
-                                                        out.println("<td>");
-                                                        out.println("<button class='btn btn-warning btn-sm' data-toggle='modal' data-target='#editPathologyModal' " +
-                                                                    "data-pathology-id='" + rs.getInt("PATHOLOGY_ID") + "' " +
-                                                                    "data-patient-id='" + rs.getInt("ID") + "' " +
-                                                                    "data-case-id='" + rs.getInt("CASE_ID") + "' " +
-                                                                    "data-test-name='" + rs.getString("TEST_NAME") + "' " +
-                                                                    "data-test-date='" + rs.getDate("TEST_DATE") + "' " +
-                                                                    "data-b-test='" + (rs.getString("B_TEST") != null ? rs.getString("B_TEST") : "") + "' " +
-                                                                    "data-bt-count='" + rs.getInt("BT_COUNT") + "' " +
-                                                                    "data-urinalysis='" + (rs.getString("URINALYSIS") != null ? rs.getString("URINALYSIS") : "") + "'>Edit</button>");
-                                                        out.println("</td>");
-                                                        out.println("</tr>");
-                                                    }
-                                                }
-                                            } catch (SQLException e) {
-                                                out.println("<tr><td colspan='11'>Error loading pathology: " + e.getMessage() + "</td></tr>");
-                                            } finally {
-                                                if (rs != null) try { rs.close(); } catch (SQLException e) {}
-                                                if (ps != null) try { ps.close(); } catch (SQLException e) {}
-                                            }
-                                        %>
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
+                                <tr>
+                                    <td><%=patientId%></td>
+                                    <td><%=patientName != null ? patientName : "-"%></td>
+                                    <td><%=gender != null ? gender : "-"%></td>
+                                    <td><%=age > 0 ? age : "-"%></td>
+                                    <td><%=bloodGroup != null ? bloodGroup : "-"%></td>
+                                    <td><%=phone != null ? phone : "-"%></td>
+                                    <td><%=patientEmail != null ? patientEmail : "-"%></td>
+                                    <td>
+                                        <button class="btn btn-success btn-sm" data-toggle="modal" data-target="#addCaseModal" data-patient-id="<%=patientId%>">Add Case</button>
+                                        <a href="view_cases.jsp?patient_id=<%=patientId%>" class="btn btn-info btn-sm">View Cases</a>
+                                        <% if (!hasAdmission) { %>
+                                        <button class="btn btn-primary btn-sm" data-toggle="modal" data-target="#addAdmissionModal_<%=patientId%>" data-patient-id="<%=patientId%>">Add Admission</button>
+                                        <% } else { %>
+                                        <button class="btn btn-danger btn-sm" data-toggle="modal" data-target="#addDischargeModal" data-patient-id="<%=patientId%>" data-admit-id="<%=admitId%>">Discharge Patient</button>
+                                        <% } %>
+                                    </td>
+                                </tr>
+                                <%
+                                        }
+                                    }
+                                %>
+                            </tbody>
+                        </table>
+                        <%
+                            } catch (SQLException e) {
+                                out.println("<div class='alert alert-danger'>Error: " + e.getMessage() + "</div>");
+                            } finally {
+                                if (rsAdmission != null) try { rsAdmission.close(); } catch (SQLException e) {}
+                                if (psAdmission != null) try { psAdmission.close(); } catch (SQLException e) {}
+                                if (rsPatients != null) try { rsPatients.close(); } catch (SQLException e) {}
+                                if (psPatients != null) try { psPatients.close(); } catch (SQLException e) {}
+                            }
+                        %>
                     </div>
                 </div>
             </div>
         </div>
         <!-- Add Patient Modal -->
         <div class="modal fade" id="addPatientModal" tabindex="-1" role="dialog">
-            <div class="modal-dialog modal-lg" role="document">
+            <div class="modal-dialog" role="document">
                 <div class="modal-content">
                     <div class="modal-header">
                         <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
-                        <h4 class="modal-title">Add Patient</h4>
+                        <h4 class="modal-title">Add New Patient</h4>
                     </div>
                     <div class="modal-body">
                         <form class="form-horizontal" action="add_patient_receptionist.jsp" method="post">
                             <div class="form-group">
-                                <label class="col-sm-3 control-label">Patient Name</label>
+                                <label class="col-sm-3 control-label">Name</label>
                                 <div class="col-sm-9">
-                                    <input type="text" name="pname" class="form-control" placeholder="Patient Name" required>
-                                </div>
-                            </div>
-                            <div class="form-group">
-                                <label class="col-sm-3 control-label">Email</label>
-                                <div class="col-sm-9">
-                                    <input type="email" name="email" class="form-control" placeholder="example@gmail.com" required>
-                                </div>
-                            </div>
-                            <div class="form-group">
-                                <label class="col-sm-3 control-label">Phone</label>
-                                <div class="col-sm-9">
-                                    <input type="text" name="phone" class="form-control" placeholder="Phone" required pattern="[0-9]{10}" title="Enter a 10-digit phone number">
+                                    <input type="text" name="name" class="form-control" placeholder="Patient Name" required>
                                 </div>
                             </div>
                             <div class="form-group">
@@ -279,607 +349,377 @@
                                     </select>
                                 </div>
                             </div>
-            <div class="form-group">
-                <label class="col-sm-3 control-label">Age</label>
-                <div class="col-sm-9">
-                    <input type="number" name="age" class="form-control" placeholder="Age" required min="0" max="150">
+                            <div class="form-group">
+                                <label class="col-sm-3 control-label">Age</label>
+                                <div class="col-sm-9">
+                                    <input type="number" name="age" class="form-control" placeholder="Age" required min="0">
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label class="col-sm-3 control-label">Date of Birth</label>
+                                <div class="col-sm-9">
+                                    <input type="date" name="dob" class="form-control" placeholder="Date of Birth">
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label class="col-sm-3 control-label">Blood Group</label>
+                                <div class="col-sm-9">
+                                    <select name="bgroup" class="form-control" required>
+                                        <option value="A+">A+</option>
+                                        <option value="A-">A-</option>
+                                        <option value="B+">B+</option>
+                                        <option value="B-">B-</option>
+                                        <option value="AB+">AB+</option>
+                                        <option value="AB-">AB-</option>
+                                        <option value="O+">O+</option>
+                                        <option value="O-">O-</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label class="col-sm-3 control-label">Phone</label>
+                                <div class="col-sm-9">
+                                    <input type="text" name="phone" class="form-control" placeholder="Phone Number" required>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label class="col-sm-3 control-label">Email</label>
+                                <div class="col-sm-9">
+                                    <input type="email" name="email" class="form-control" placeholder="Email" required>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label class="col-sm-3 control-label">Street</label>
+                                <div class="col-sm-9">
+                                    <input type="text" name="street" class="form-control" placeholder="Street">
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label class="col-sm-3 control-label">Area</label>
+                                <div class="col-sm-9">
+                                    <input type="text" name="area" class="form-control" placeholder="Area">
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label class="col-sm-3 control-label">City</label>
+                                <div class="col-sm-9">
+                                    <input type="text" name="city" class="form-control" placeholder="City">
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label class="col-sm-3 control-label">State</label>
+                                <div class="col-sm-9">
+                                    <input type="text" name="state" class="form-control" placeholder="State">
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label class="col-sm-3 control-label">Country</label>
+                                <div class="col-sm-9">
+                                    <input type="text" name="country" class="form-control" placeholder="Country">
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label class="col-sm-3 control-label">Pincode</label>
+                                <div class="col-sm-9">
+                                    <input type="text" name="pincode" class="form-control" placeholder="Pincode">
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label class="col-sm-3 control-label">Medical History</label>
+                                <div class="col-sm-9">
+                                    <textarea name="medical_history" class="form-control" placeholder="Medical History"></textarea>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <div class="col-sm-offset-3 col-sm-9">
+                                    <button type="submit" class="btn btn-primary">Add Patient</button>
+                                    <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
                 </div>
             </div>
-            <div class="form-group">
-                <label class="col-sm-3 control-label">Date of Birth</label>
-                <div class="col-sm-9">
-                    <input type="date" name="dob" class="form-control" required>
-                </div>
-            </div>
-            <div class="form-group">
-                <label class="col-sm-3 control-label">Blood Group</label>
-                <div class="col-sm-9">
-                    <select name="bgroup" class="form-control" required>
-                        <option value="A+">A+</option>
-                        <option value="A-">A-</option>
-                        <option value="B+">B+</option>
-                        <option value="B-">B-</option>
-                        <option value="AB+">AB+</option>
-                        <option value="AB-">AB-</option>
-                        <option value="O+">O+</option>
-                        <option value="O-">O-</option>
-                    </select>
-                </div>
-            </div>
-            <div class="form-group">
-                <label class="col-sm-3 control-label">Street</label>
-                <div class="col-sm-9">
-                    <input type="text" name="street" class="form-control" placeholder="Street" required>
-                </div>
-            </div>
-            <div class="form-group">
-                <label class="col-sm-3 control-label">Area</label>
-                <div class="col-sm-9">
-                    <input type="text" name="area" class="form-control" placeholder="Area" required>
-                </div>
-            </div>
-            <div class="form-group">
-                <label class="col-sm-3 control-label">City</label>
-                <div class="col-sm-9">
-                    <input type="text" name="city" class="form-control" placeholder="City" required>
-                </div>
-            </div>
-            <div class="form-group">
-                <label class="col-sm-3 control-label">State</label>
-                <div class="col-sm-9">
-                    <input type="text" name="state" class="form-control" placeholder="State" required>
-                </div>
-            </div>
-            <div class="form-group">
-                <label class="col-sm-3 control-label">Country</label>
-                <div class="col-sm-9">
-                    <input type="text" name="country" class="form-control" placeholder="Country" value="India">
-                </div>
-            </div>
-            <div class="form-group">
-                <label class="col-sm-3 control-label">Pincode</label>
-                <div class="col-sm-9">
-                    <input type="text" name="pincode" class="form-control" placeholder="Pincode" required pattern="[0-9]{6}" title="Enter a 6-digit pincode">
-                </div>
-            </div>
-            <div class="form-group">
-                <label class="col-sm-3 control-label">Medical History</label>
-                <div class="col-sm-9">
-                    <textarea name="medical_history" class="form-control" placeholder="Enter any medical history" rows="4" maxlength="1000"></textarea>
-                </div>
-            </div>
-            <div class="form-group">
-                <label class="col-sm-3 control-label">Reason Of Visit</label>
-                <div class="col-sm-9">
-                    <select name="reason" class="form-control" required>
-                        <%
-                            PreparedStatement psReason = null;
-                            ResultSet rsReason = null;
-                            try {
-                                psReason = c.prepareStatement("SELECT REASON FROM reason_department_mapping");
-                                rsReason = psReason.executeQuery();
-                                if (!rsReason.isBeforeFirst()) {
-                                    out.println("<option value=\"\">No reasons available</option>");
-                                } else {
-                                    while (rsReason.next()) {
-                                        out.println("<option value=\"" + rsReason.getString("REASON") + "\">" + rsReason.getString("REASON") + "</option>");
-                                    }
-                                }
-                            } catch (SQLException e) {
-                                out.println("<option value=\"\">Error: " + e.getMessage() + "</option>");
-                            } finally {
-                                if (rsReason != null) try { rsReason.close(); } catch (SQLException e) {}
-                                if (psReason != null) try { psReason.close(); } catch (SQLException e) {}
-                            }
-                        %>
-                    </select>
-                </div>
-            </div>
-            <div class="form-group">
-                <label class="col-sm-3 control-label">Condition Details</label>
-                <div class="col-sm-9">
-                    <textarea name="condition_details" class="form-control" placeholder="Describe the patient's condition" rows="4" maxlength="1000"></textarea>
-                </div>
-            </div>
-            <div class="form-group">
-                <label class="col-sm-3 control-label">Referred To</label>
-                <div class="col-sm-9">
-                    <select name="doctor_id" class="form-control" required>
-                        <%
-                            PreparedStatement psDoctor = null;
-                            ResultSet rsDoctor = null;
-                            try {
-                                psDoctor = c.prepareStatement("SELECT ID, NAME FROM doctor_info");
-                                rsDoctor = psDoctor.executeQuery();
-                                if (!rsDoctor.isBeforeFirst()) {
-                                    out.println("<option value=\"\">No doctors available</option>");
-                                } else {
-                                    while (rsDoctor.next()) {
-                                        out.println("<option value=\"" + rsDoctor.getInt("ID") + "\">" + rsDoctor.getString("NAME") + "</option>");
-                                    }
-                                }
-                            } catch (SQLException e) {
-                                out.println("<option value=\"\">Error: " + e.getMessage() + "</option>");
-                            } finally {
-                                if (rsDoctor != null) try { rsDoctor.close(); } catch (SQLException e) {}
-                                if (psDoctor != null) try { psDoctor.close(); } catch (SQLException e) {}
-                            }
-                        %>
-                    </select>
-                </div>
-            </div>
-            <div class="form-group">
-                <div class="col-sm-offset-3 col-sm-9">
-                    <button type="submit" class="btn btn-primary">Add Patient</button>
-                    <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
-                </div>
-            </div>
-        </form>
-    </div>
-</div>
-</div>
-</div>
-<!-- Add Case Modal -->
-<div class="modal fade" id="addCaseModal" tabindex="-1" role="dialog">
-<div class="modal-dialog" role="document">
-    <div class="modal-content">
-        <div class="modal-header">
-            <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
-            <h4 class="modal-title">Add Case</h4>
         </div>
-        <div class="modal-body">
-            <form class="form-horizontal" action="add_case_receptionist.jsp" method="post">
-                <input type="hidden" name="patient_id" id="patient_id">
-                <div class="form-group">
-                    <label class="col-sm-3 control-label">Reason Of Visit</label>
-                    <div class="col-sm-9">
-                        <select name="reason" class="form-control" required>
-                            <%
-                                psReason = null;
-                                rsReason = null;
-                                try {
-                                    psReason = c.prepareStatement("SELECT REASON FROM reason_department_mapping");
-                                    rsReason = psReason.executeQuery();
-                                    if (!rsReason.isBeforeFirst()) {
-                                        out.println("<option value=\"\">No reasons available</option>");
-                                    } else {
-                                        while (rsReason.next()) {
-                                            out.println("<option value=\"" + rsReason.getString("REASON") + "\">" + rsReason.getString("REASON") + "</option>");
-                                        }
-                                    }
-                                } catch (SQLException e) {
-                                    out.println("<option value=\"\">Error: " + e.getMessage() + "</option>");
-                                } finally {
-                                    if (rsReason != null) try { rsReason.close(); } catch (SQLException e) {}
-                                    if (psReason != null) try { psReason.close(); } catch (SQLException e) {}
-                                }
-                            %>
-                        </select>
+        <!-- Add Case Modal -->
+        <div class="modal fade" id="addCaseModal" tabindex="-1" role="dialog">
+            <div class="modal-dialog" role="document">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
+                        <h4 class="modal-title">Add New Case</h4>
+                    </div>
+                    <div class="modal-body">
+                        <form class="form-horizontal" action="add_case_receptionist.jsp" method="post">
+                            <div class="form-group">
+                                <label class="col-sm-3 control-label">Patient ID</label>
+                                <div class="col-sm-9">
+                                    <input type="number" name="patient_id" id="case_patient_id" class="form-control" readonly>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label class="col-sm-3 control-label">Case Date</label>
+                                <div class="col-sm-9">
+                                    <input type="date" name="case_date" class="form-control" required>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label class="col-sm-3 control-label">Reason</label>
+                                <div class="col-sm-9">
+                                    <select name="reason" id="case_reason" class="form-control" required>
+                                        <%
+                                            PreparedStatement psReasons = null;
+                                            ResultSet rsReasons = null;
+                                            try {
+                                                psReasons = conn.prepareStatement("SELECT REASON FROM reason_department_mapping ORDER BY REASON");
+                                                rsReasons = psReasons.executeQuery();
+                                                while (rsReasons.next()) {
+                                                    out.println("<option value=\"" + rsReasons.getString("REASON") + "\">" + rsReasons.getString("REASON") + "</option>");
+                                                }
+                                            } catch (SQLException e) {
+                                                out.println("<option value=\"\">Error loading reasons</option>");
+                                            } finally {
+                                                if (rsReasons != null) try { rsReasons.close(); } catch (SQLException e) {}
+                                                if (psReasons != null) try { psReasons.close(); } catch (SQLException e) {}
+                                            }
+                                        %>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label class="col-sm-3 control-label">Doctor</label>
+                                <div class="col-sm-9">
+                                    <select name="doctor_id" id="case_doctor_id" class="form-control" required>
+                                        <option value="">Select Doctor</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label class="col-sm-3 control-label">Condition Details</label>
+                                <div class="col-sm-9">
+                                    <textarea name="condition_details" class="form-control" placeholder="Condition Details"></textarea>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <div class="col-sm-offset-3 col-sm-9">
+                                    <button type="submit" class="btn btn-primary">Add Case</button>
+                                    <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+                                </div>
+                            </div>
+                        </form>
                     </div>
                 </div>
-                <div class="form-group">
-                    <label class="col-sm-3 control-label">Condition Details</label>
-                    <div class="col-sm-9">
-                        <textarea name="condition_details" class="form-control" placeholder="Describe the patient's condition" rows="4" maxlength="1000"></textarea>
-                    </div>
-                </div>
-                <div class="form-group">
-                    <label class="col-sm-3 control-label">Referred To</label>
-                    <div class="col-sm-9">
-                        <select name="doctor_id" class="form-control" required>
-                            <%
-                                psDoctor = null;
-                                rsDoctor = null;
-                                try {
-                                    psDoctor = c.prepareStatement("SELECT ID, NAME FROM doctor_info");
-                                    rsDoctor = psDoctor.executeQuery();
-                                    if (!rsDoctor.isBeforeFirst()) {
-                                        out.println("<option value=\"\">No doctors available</option>");
-                                    } else {
-                                        while (rsDoctor.next()) {
-                                            out.println("<option value=\"" + rsDoctor.getInt("ID") + "\">" + rsDoctor.getString("NAME") + "</option>");
-                                        }
-                                    }
-                                } catch (SQLException e) {
-                                    out.println("<option value=\"\">Error: " + e.getMessage() + "</option>");
-                                } finally {
-                                    if (rsDoctor != null) try { rsDoctor.close(); } catch (SQLException e) {}
-                                    if (psDoctor != null) try { psDoctor.close(); } catch (SQLException e) {}
-                                }
-                            %>
-                        </select>
-                    </div>
-                </div>
-                <div class="form-group">
-                    <div class="col-sm-offset-3 col-sm-9">
-                        <button type="submit" class="btn btn-primary">Add Case</button>
-                        <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
-                    </div>
-                </div>
-            </form>
+            </div>
         </div>
-    </div>
-</div>
-</div>
-<!-- Add Pathology Modal -->
-<div class="modal fade" id="addPathologyModal" tabindex="-1" role="dialog">
-<div class="modal-dialog modal-lg" role="document">
-    <div class="modal-content">
-        <div class="modal-header">
-            <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
-            <h4 class="modal-title">Add Pathology Record</h4>
-        </div>
-        <div class="modal-body">
-            <form class="form-horizontal" action="add_pathology.jsp" method="post">
-                <div class="form-group">
-                    <label class="col-sm-3 control-label">Patient ID</label>
-                    <div class="col-sm-9">
-                        <input type="number" name="patient_id" id="add_patient_id" class="form-control" placeholder="Patient ID" required min="1">
+        <%
+            // Generate a separate Add Admission modal for each patient to embed the CASE_ID and DOCTOR_ID directly
+            try {
+                psPatients = conn.prepareStatement("SELECT ID FROM patient_info ORDER BY ID");
+                rsPatients = psPatients.executeQuery();
+                while (rsPatients.next()) {
+                    int patientId = rsPatients.getInt("ID");
+        %>
+        <!-- Add Admission Modal for Patient <%=patientId%> -->
+        <div class="modal fade" id="addAdmissionModal_<%=patientId%>" tabindex="-1" role="dialog">
+            <div class="modal-dialog" role="document">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
+                        <h4 class="modal-title">Add Admission for Patient <%=patientId%></h4>
                     </div>
-                </div>
-                <div class="form-group">
-                    <label class="col-sm-3 control-label">Case ID</label>
-                    <div class="col-sm-9">
-                        <input type="number" name="case_id" class="form-control" placeholder="Case ID" required min="1">
-                    </div>
-                </div>
-                <div class="form-group">
-                    <label class="col-sm-3 control-label">Test</label>
-                    <div class="col-sm-9">
-                        <select name="test_id" class="form-control" required>
-                            <%
-                                PreparedStatement psTests = null;
-                                ResultSet rsTests = null;
-                                try {
-                                    psTests = c.prepareStatement("SELECT TEST_ID, NAME FROM pathology_test");
-                                    rsTests = psTests.executeQuery();
-                                    if (!rsTests.isBeforeFirst()) {
-                                        out.println("<option value=\"\">No tests available</option>");
-                                    } else {
-                                        while (rsTests.next()) {
-                                            out.println("<option value=\"" + rsTests.getInt("TEST_ID") + "\">" + rsTests.getString("NAME") + "</option>");
+                    <div class="modal-body">
+                        <form class="form-horizontal" action="add_admission.jsp" method="post">
+                            <div class="form-group">
+                                <label class="col-sm-3 control-label">Patient ID</label>
+                                <div class="col-sm-9">
+                                    <input type="number" name="patient_id" id="admission_patient_id" class="form-control" value="<%=patientId%>" readonly>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label class="col-sm-3 control-label">Case ID</label>
+                                <div class="col-sm-9">
+                                    <select name="case_id" id="case_id_<%=patientId%>" class="form-control" required>
+                                        <%
+                                            PreparedStatement psCase = null;
+                                            ResultSet rsCase = null;
+                                            try {
+                                                psCase = conn.prepareStatement(
+                                                    "SELECT CASE_ID, DOCTOR_ID FROM case_master WHERE PATIENT_ID = ? ORDER BY CASE_DATE DESC, CASE_ID DESC LIMIT 1"
+                                                );
+                                                psCase.setInt(1, patientId);
+                                                rsCase = psCase.executeQuery();
+                                                if (rsCase.next()) {
+                                                    int caseId = rsCase.getInt("CASE_ID");
+                                                    int doctorId = rsCase.getInt("DOCTOR_ID");
+                                                    out.println("<option value=\"" + caseId + "\">" + caseId + "</option>");
+                                                } else {
+                                                    out.println("<option value=\"\">No cases found for this patient</option>");
+                                                }
+                                            } catch (SQLException e) {
+                                                out.println("<option value=\"\">Error loading case ID: " + e.getMessage() + "</option>");
+                                            } finally {
+                                                if (rsCase != null) try { rsCase.close(); } catch (SQLException e) {}
+                                                if (psCase != null) try { psCase.close(); } catch (SQLException e) {}
+                                            }
+                                        %>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label class="col-sm-3 control-label">Doctor ID</label>
+                                <div class="col-sm-9">
+                                    <select name="doctor_id" id="doctor_id_<%=patientId%>" class="form-control" required disabled>
+                                        <%
+                                            try {
+                                                psCase = conn.prepareStatement(
+                                                    "SELECT CASE_ID, DOCTOR_ID FROM case_master WHERE PATIENT_ID = ? ORDER BY CASE_DATE DESC, CASE_ID DESC LIMIT 1"
+                                                );
+                                                psCase.setInt(1, patientId);
+                                                rsCase = psCase.executeQuery();
+                                                if (rsCase.next()) {
+                                                    int doctorId = rsCase.getInt("DOCTOR_ID");
+                                                    PreparedStatement psDoctorName = conn.prepareStatement(
+                                                        "SELECT NAME FROM doctor_info WHERE ID = ?"
+                                                    );
+                                                    psDoctorName.setInt(1, doctorId);
+                                                    ResultSet rsDoctorName = psDoctorName.executeQuery();
+                                                    if (rsDoctorName.next()) {
+                                                        String doctorName = rsDoctorName.getString("NAME");
+                                                        out.println("<option value=\"" + doctorId + "\">" + doctorName + "</option>");
+                                                    }
+                                                    rsDoctorName.close();
+                                                    psDoctorName.close();
+                                                } else {
+                                                    out.println("<option value=\"\">No doctor assigned</option>");
+                                                }
+                                            } catch (SQLException e) {
+                                                out.println("<option value=\"\">Error loading doctor: " + e.getMessage() + "</option>");
+                                            } finally {
+                                                if (rsCase != null) try { rsCase.close(); } catch (SQLException e) {}
+                                                if (psCase != null) try { psCase.close(); } catch (SQLException e) {}
+                                            }
+                                        %>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label class="col-sm-3 control-label">Room and Bed</label>
+                                <div class="col-sm-9">
+                                    <select name="room_bed_selection" id="room_bed_selection" class="form-control" required>
+                                        <%
+                                            PreparedStatement psRooms = null;
+                                            ResultSet rsRooms = null;
+                                            try {
+                                                psRooms = conn.prepareStatement(
+                                                    "SELECT ROOM_NO, TYPE, BED_NO FROM room_info WHERE STATUS = 'Available' ORDER BY ROOM_NO, BED_NO"
+                                                );
+                                                rsRooms = psRooms.executeQuery();
+                                                if (!rsRooms.isBeforeFirst()) {
+                                                    out.println("<option value=\"\">No available rooms</option>");
+                                                } else {
+                                                    while (rsRooms.next()) {
+                                                        String roomNo = rsRooms.getString("ROOM_NO");
+                                                        String roomType = rsRooms.getString("TYPE");
+                                                        String bedNo = rsRooms.getString("BED_NO");
+                                                        String displayText = roomNo + " - " + (roomType != null ? roomType : "Unknown Type") + " - Bed " + bedNo;
+                                                        String value = roomNo + "|" + bedNo; // Format: "room_no|bed_no"
+                                                        out.println("<option value=\"" + value + "\">" + displayText + "</option>");
+                                                    }
+                                                }
+                                            } catch (SQLException e) {
+                                                out.println("<option value=\"\">Error loading rooms: " + e.getMessage() + "</option>");
+                                            } finally {
+                                                if (rsRooms != null) try { rsRooms.close(); } catch (SQLException e) {}
+                                                if (psRooms != null) try { psRooms.close(); } catch (SQLException e) {}
+                                            }
+                                        %>
+                                    </select>
+                                    <!-- Hidden fields to store room_no and bed_no for form submission -->
+                                    <input type="hidden" name="room_no" id="room_no">
+                                    <input type="hidden" name="bed_no" id="bed_no">
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label class="col-sm-3 control-label">Admission Date</label>
+                                <div class="col-sm-9">
+                                    <input type="date" name="admit_date" id="admit_date" class="form-control" value="2025-06-15" required>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <div class="col-sm-offset-3 col-sm-9">
+                                    <%
+                                        boolean hasCase = false;
+                                        try {
+                                            psCase = conn.prepareStatement(
+                                                "SELECT CASE_ID FROM case_master WHERE PATIENT_ID = ? ORDER BY CASE_DATE DESC, CASE_ID DESC LIMIT 1"
+                                            );
+                                            psCase.setInt(1, patientId);
+                                            rsCase = psCase.executeQuery();
+                                            hasCase = rsCase.next();
+                                        } catch (SQLException e) {
+                                            out.println("<div class='alert alert-danger'>Error checking case: " + e.getMessage() + "</div>");
+                                        } finally {
+                                            if (rsCase != null) try { rsCase.close(); } catch (SQLException e) {}
+                                            if (psCase != null) try { psCase.close(); } catch (SQLException e) {}
                                         }
-                                    }
-                                } catch (SQLException e) {
-                                    out.println("<option value=\"\">Error: " + e.getMessage() + "</option>");
-                                } finally {
-                                    if (rsTests != null) try { rsTests.close(); } catch (SQLException e) {}
-                                    if (psTests != null) try { psTests.close(); } catch (SQLException e) {}
-                                }
-                            %>
-                        </select>
+                                    %>
+                                    <button type="submit" class="btn btn-primary" <%= hasCase ? "" : "disabled" %>>Add Admission</button>
+                                    <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+                                </div>
+                            </div>
+                        </form>
                     </div>
                 </div>
-                <div class="form-group">
-                    <label class="col-sm-3 control-label">Test Date</label>
-                    <div class="col-sm-9">
-                        <input type="date" name="test_date" class="form-control" required>
+            </div>
+        </div>
+        <%
+                }
+            } catch (SQLException e) {
+                out.println("<div class='alert alert-danger'>Error loading modals: " + e.getMessage() + "</div>");
+            } finally {
+                if (rsPatients != null) try { rsPatients.close(); } catch (SQLException e) {}
+                if (psPatients != null) try { psPatients.close(); } catch (SQLException e) {}
+            }
+        %>
+        <!-- Add Discharge Modal -->
+        <div class="modal fade" id="addDischargeModal" tabindex="-1" role="dialog">
+            <div class="modal-dialog" role="document">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
+                        <h4 class="modal-title">Discharge Patient</h4>
+                    </div>
+                    <div class="modal-body">
+                        <form class="form-horizontal" action="discharge_patient.jsp" method="post">
+                            <div class="form-group">
+                                <label class="col-sm-3 control-label">Patient ID</label>
+                                <div class="col-sm-9">
+                                    <input type="number" name="patient_id" id="discharge_patient_id" class="form-control" readonly>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label class="col-sm-3 control-label">Admission ID</label>
+                                <div class="col-sm-9">
+                                    <input type="number" name="admit_id" id="discharge_admit_id" class="form-control" readonly>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label class="col-sm-3 control-label">Discharge Date</label>
+                                <div class="col-sm-9">
+                                    <input type="date" name="discharge_date" id="discharge_date" class="form-control" required>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <div class="col-sm-offset-3 col-sm-9">
+                                    <button type="submit" class="btn btn-primary">Discharge</button>
+                                    <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+                                </div>
+                            </div>
+                        </form>
                     </div>
                 </div>
-                <div class="form-group">
-                    <label class="col-sm-3 control-label">Blood Test Result</label>
-                    <div class="col-sm-9">
-                        <select name="b_test" class="form-control">
-                            <option value="">None</option>
-                            <option value="Positive">Positive</option>
-                            <option value="Negative">Negative</option>
-                        </select>
-                    </div>
-                </div>
-                <div class="form-group">
-                    <label class="col-sm-3 control-label">Blood Test Count</label>
-                    <div class="col-sm-9">
-                        <input type="number" name="bt_count" class="form-control" value="0" min="0">
-                    </div>
-                </div>
-                <div class="form-group">
-                    <label class="col-sm-3 control-label">Urinalysis Result</label>
-                    <div class="col-sm-9">
-                        <select name="urinalysis" class="form-control">
-                            <option value="">None</option>
-                            <option value="Positive">Positive</option>
-                            <option value="Negative">Negative</option>
-                        </select>
-                    </div>
-                </div>
-                <div class="form-group">
-                    <label class="col-sm-3 control-label">Urinalysis Count</label>
-                    <div class="col-sm-9">
-                        <input type="number" name="urinalysis_count" class="form-control" value="0" min="0">
-                    </div>
-                </div>
-                <div class="form-group">
-                    <label class="col-sm-3 control-label">Liver Function Tests Result</label>
-                    <div class="col-sm-9">
-                        <select name="liver_function_tests" class="form-control">
-                            <option value="">None</option>
-                            <option value="Positive">Positive</option>
-                            <option value="Negative">Negative</option>
-                        </select>
-                    </div>
-                </div>
-                <div class="form-group">
-                    <label class="col-sm-3 control-label">Liver Function Tests Count</label>
-                    <div class="col-sm-9">
-                        <input type="number" name="liver_function_tests_count" class="form-control" value="0" min="0">
-                    </div>
-                </div>
-                <div class="form-group">
-                    <label class="col-sm-3 control-label">Lipid Profiles Result</label>
-                    <div class="col-sm-9">
-                        <select name="lipid_profiles" class="form-control">
-                            <option value="">None</option>
-                            <option value="Positive">Positive</option>
-                            <option value="Negative">Negative</option>
-                        </select>
-                    </div>
-                </div>
-                <div class="form-group">
-                    <label class="col-sm-3 control-label">Lipid Profiles Count</label>
-                    <div class="col-sm-9">
-                        <input type="number" name="lipid_profiles_count" class="form-control" value="0" min="0">
-                    </div>
-                </div>
-                <div class="form-group">
-                    <label class="col-sm-3 control-label">Thyroid Function Tests Result</label>
-                    <div class="col-sm-9">
-                        <select name="thyroid_function_tests" class="form-control">
-                            <option value="">None</option>
-                            <option value="Positive">Positive</option>
-                            <option value="Negative">Negative</option>
-                        </select>
-                    </div>
-                </div>
-                <div class="form-group">
-                    <label class="col-sm-3 control-label">Thyroid Function Tests Count</label>
-                    <div class="col-sm-9">
-                        <input type="number" name="thyroid_function_tests_count" class="form-control" value="0" min="0">
-                    </div>
-                </div>
-                <div class="form-group">
-                    <label class="col-sm-3 control-label">Kidney Function Tests Result</label>
-                    <div class="col-sm-9">
-                        <select name="kidney_function_tests" class="form-control">
-                            <option value="">None</option>
-                            <option value="Positive">Positive</option>
-                            <option value="Negative">Negative</option>
-                        </select>
-                    </div>
-                </div>
-                <div class="form-group">
-                    <label class="col-sm-3 control-label">Kidney Function Tests Count</label>
-                    <div class="col-sm-9">
-                        <input type="number" name="kidney_function_tests_count" class="form-control" value="0" min="0">
-                    </div>
-                </div>
-                <div class="form-group">
-                    <div class="col-sm-offset-3 col-sm-9">
-                        <button type="submit" class="btn btn-primary">Add Pathology</button>
-                        <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
-                    </div>
-                </div>
-            </form>
+            </div>
         </div>
     </div>
-</div>
-</div>
-<!-- Edit Pathology Modal -->
-<div class="modal fade" id="editPathologyModal" tabindex="-1" role="dialog">
-<div class="modal-dialog modal-lg" role="document">
-    <div class="modal-content">
-        <div class="modal-header">
-            <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
-            <h4 class="modal-title">Edit Pathology Record</h4>
-        </div>
-        <div class="modal-body">
-            <form class="form-horizontal" action="edit_pathology.jsp" method="post">
-                <div class="form-group">
-                    <label class="col-sm-3 control-label">Pathology ID</label>
-                    <div class="col-sm-9">
-                        <input type="number" name="pathology_id" id="edit_pathology_id" class="form-control" placeholder="Enter Pathology ID" required min="1">
-                    </div>
-                </div>
-                <div class="form-group">
-                    <label class="col-sm-3 control-label">Patient ID</label>
-                    <div class="col-sm-9">
-                        <input type="number" name="patient_id" id="edit_patient_id" class="form-control" readonly>
-                    </div>
-                </div>
-                <div class="form-group">
-                    <label class="col-sm-3 control-label">Case ID</label>
-                    <div class="col-sm-9">
-                        <input type="number" name="case_id" id="edit_case_id" class="form-control" required min="1">
-                    </div>
-                </div>
-                <div class="form-group">
-                    <label class="col-sm-3 control-label">Test</label>
-                    <div class="col-sm-9">
-                        <select name="test_id" id="edit_test_id" class="form-control" required>
-                            <%
-                                PreparedStatement psEditTests = null;
-                                ResultSet rsEditTests = null;
-                                try {
-                                    psEditTests = c.prepareStatement("SELECT TEST_ID, NAME FROM pathology_test");
-                                    rsEditTests = psEditTests.executeQuery();
-                                    if (!rsEditTests.isBeforeFirst()) {
-                                        out.println("<option value=\"\">No tests available</option>");
-                                    } else {
-                                        while (rsEditTests.next()) {
-                                            out.println("<option value=\"" + rsEditTests.getInt("TEST_ID") + "\">" + rsEditTests.getString("NAME") + "</option>");
-                                        }
-                                    }
-                                } catch (SQLException e) {
-                                    out.println("<option value=\"\">Error: " + e.getMessage() + "</option>");
-                                } finally {
-                                    if (rsEditTests != null) try { rsEditTests.close(); } catch (SQLException e) {}
-                                    if (psEditTests != null) try { psEditTests.close(); } catch (SQLException e) {}
-                                }
-                            %>
-                        </select>
-                    </div>
-                </div>
-                <div class="form-group">
-                    <label class="col-sm-3 control-label">Test Date</label>
-                    <div class="col-sm-9">
-                        <input type="date" name="test_date" id="edit_test_date" class="form-control" required>
-                    </div>
-                </div>
-                <div class="form-group">
-                    <label class="col-sm-3 control-label">Blood Test Result</label>
-                    <div class="col-sm-9">
-                        <select name="b_test" id="edit_b_test" class="form-control">
-                            <option value="">None</option>
-                            <option value="Positive">Positive</option>
-                            <option value="Negative">Negative</option>
-                        </select>
-                    </div>
-                </div>
-                <div class="form-group">
-                    <label class="col-sm-3 control-label">Blood Test Count</label>
-                    <div class="col-sm-9">
-                        <input type="number" name="bt_count" id="edit_bt_count" class="form-control" min="0">
-                    </div>
-                </div>
-                <div class="form-group">
-                    <label class="col-sm-3 control-label">Urinalysis Result</label>
-                    <div class="col-sm-9">
-                        <select name="urinalysis" id="edit_urinalysis" class="form-control">
-                            <option value="">None</option>
-                            <option value="Positive">Positive</option>
-                            <option value="Negative">Negative</option>
-                        </select>
-                    </div>
-                </div>
-                <div class="form-group">
-                    <label class="col-sm-3 control-label">Urinalysis Count</label>
-                    <div class="col-sm-9">
-                        <input type="number" name="urinalysis_count" id="edit_urinalysis_count" class="form-control" value="0" min="0">
-                    </div>
-                </div>
-                <div class="form-group">
-                    <label class="col-sm-3 control-label">Liver Function Tests Result</label>
-                    <div class="col-sm-9">
-                        <select name="liver_function_tests" id="edit_liver_function_tests" class="form-control">
-                            <option value="">None</option>
-                            <option value="Positive">Positive</option>
-                            <option value="Negative">Negative</option>
-                        </select>
-                    </div>
-                </div>
-                <div class="form-group">
-                    <label class="col-sm-3 control-label">Liver Function Tests Count</label>
-                    <div class="col-sm-9">
-                        <input type="number" name="liver_function_tests_count" id="edit_liver_function_tests_count" class="form-control" value="0" min="0">
-                    </div>
-                </div>
-                <div class="form-group">
-                    <label class="col-sm-3 control-label">Lipid Profiles Result</label>
-                    <div class="col-sm-9">
-                        <select name="lipid_profiles" id="edit_lipid_profiles" class="form-control">
-                            <option value="">None</option>
-                            <option value="Positive">Positive</option>
-                            <option value="Negative">Negative</option>
-                        </select>
-                    </div>
-                </div>
-                <div class="form-group">
-                    <label class="col-sm-3 control-label">Lipid Profiles Count</label>
-                    <div class="col-sm-9">
-                        <input type="number" name="lipid_profiles_count" id="edit_lipid_profiles_count" class="form-control" value="0" min="0">
-                    </div>
-                </div>
-                <div class="form-group">
-                    <label class="col-sm-3 control-label">Thyroid Function Tests Result</label>
-                    <div class="col-sm-9">
-                        <select name="thyroid_function_tests" id="edit_thyroid_function_tests" class="form-control">
-                            <option value="">None</option>
-                            <option value="Positive">Positive</option>
-                            <option value="Negative">Negative</option>
-                        </select>
-                    </div>
-                </div>
-                <div class="form-group">
-                    <label class="col-sm-3 control-label">Thyroid Function Tests Count</label>
-                    <div class="col-sm-9">
-                        <input type="number" name="thyroid_function_tests_count" id="edit_thyroid_function_tests_count" class="form-control" value="0" min="0">
-                    </div>
-                </div>
-                <div class="form-group">
-                    <label class="col-sm-3 control-label">Kidney Function Tests Result</label>
-                    <div class="col-sm-9">
-                        <select name="kidney_function_tests" id="edit_kidney_function_tests" class="form-control">
-                            <option value="">None</option>
-                            <option value="Positive">Positive</option>
-                            <option value="Negative">Negative</option>
-                        </select>
-                    </div>
-                </div>
-                <div class="form-group">
-                    <label class="col-sm-3 control-label">Kidney Function Tests Count</label>
-                    <div class="col-sm-9">
-                        <input type="number" name="kidney_function_tests_count" id="edit_kidney_function_tests_count" class="form-control" value="0" min="0">
-                    </div>
-                </div>
-                <div class="form-group">
-                    <div class="col-sm-offset-3 col-sm-9">
-                        <button type="submit" class="btn btn-primary">Update Pathology</button>
-                        <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
-                    </div>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
-</div>
-<div class="row marginreset"></div>
-</div>
-<script>
-    $('#addCaseModal').on('show.bs.modal', function (event) {
-        var button = $(event.relatedTarget);
-        var patientId = button.data('patient-id');
-        var modal = $(this);
-        modal.find('#patient_id').val(patientId);
-    });
-    $('#addPathologyModal').on('show.bs.modal', function (event) {
-        var button = $(event.relatedTarget);
-        var patientId = button.data('patient-id');
-        var modal = $(this);
-        if (patientId) {
-            modal.find('#add_patient_id').val(patientId).prop('readonly', true);
-        } else {
-            modal.find('#add_patient_id').val('').prop('readonly', false);
-        }
-    });
-    $('#editPathologyModal').on('show.bs.modal', function (event) {
-        var button = $(event.relatedTarget);
-        var modal = $(this);
-        var patientId = button.data('patient-id');
-        var pathologyId = button.data('pathology-id');
-        if (patientId) {
-            modal.find('#edit_patient_id').val(patientId).prop('readonly', true);
-        } else {
-            modal.find('#edit_patient_id').val('').prop('readonly', false);
-        }
-        if (pathologyId) {
-            modal.find('#edit_pathology_id').val(pathologyId);
-            modal.find('#edit_case_id').val(button.data('case-id'));
-            modal.find('#edit_test_date').val(button.data('test-date'));
-            modal.find('#edit_b_test').val(button.data('b-test'));
-            modal.find('#edit_bt_count').val(button.data('bt-count'));
-            modal.find('#edit_urinalysis').val(button.data('urinalysis'));
-            // Note: test_id requires mapping from test-name or separate query
-            var testName = button.data('test-name');
-        } else {
-            modal.find('#edit_pathology_id').val('');
-            modal.find('#edit_case_id').val('');
-            modal.find('#edit_test_date').val('');
-            modal.find('#edit_b_test').val('');
-            modal.find('#edit_bt_count').val('');
-            modal.find('#edit_urinalysis').val('');
-        }
-    });
-</script>
 </body>
 </html>
-<% } %>
-```

@@ -1,5 +1,4 @@
-<%@page import="java.sql.*"%>
-<%@page import="java.util.Date"%>
+<%@page import="java.sql.*, java.util.Date"%>
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -9,16 +8,11 @@
     <title>Add Prescription - Hospital Management System</title>
     <link href="css/bootstrap.min.css" rel="stylesheet">
     <script src="js/jquery.js"></script>
+    <script src="js/bootstrap.min.js"></script>
     <style>
-        .action-buttons {
-            white-space: nowrap;
-        }
-        .form-group {
-            margin-bottom: 15px;
-        }
-        .panel {
-            margin-top: 20px;
-        }
+        .action-buttons { white-space: nowrap; }
+        .form-group { margin-bottom: 15px; }
+        .panel { margin-top: 20px; }
     </style>
 </head>
 <%@include file="header_doctor.jsp"%>
@@ -30,38 +24,50 @@
             <div class="panel-heading">Add Prescription</div>
             <div class="panel-body">
 <%
+    if (session.getAttribute("id") == null) {
+        response.sendRedirect("login.jsp");
+        return;
+    }
     Connection con = null;
     PreparedStatement ps = null;
     try {
-        // Retrieve form parameters
-        int patientId = Integer.parseInt(request.getParameter("patientid"));
-        int doctorId = Integer.parseInt(request.getParameter("doctorid"));
+        // Validate parameters
+        String caseIdStr = request.getParameter("caseid");
+        String doctorIdStr = request.getParameter("doctorid");
         String medicine = request.getParameter("medicine");
         String dosage = request.getParameter("dosage");
         String duration = request.getParameter("duration");
         String notes = request.getParameter("notes");
-        
-        // Validate inputs
+
+        if (caseIdStr == null || !caseIdStr.matches("\\d+")) {
+            throw new Exception("Invalid or missing case ID.");
+        }
+        if (doctorIdStr == null || !doctorIdStr.matches("\\d+")) {
+            throw new Exception("Invalid or missing doctor ID.");
+        }
         if (medicine == null || medicine.trim().isEmpty() || dosage == null || dosage.trim().isEmpty() || duration == null || duration.trim().isEmpty()) {
             throw new Exception("Medicine, dosage, and duration are required.");
         }
-        
+
+        int caseId = Integer.parseInt(caseIdStr);
+        int doctorId = Integer.parseInt(doctorIdStr);
+
         // Get database connection
-        con = (Connection)application.getAttribute("connection");
+        con = (Connection) application.getAttribute("connection");
         con.setAutoCommit(false); // Start transaction
-        
-        // Prepare SQL statement
+
+        // Insert prescription
         ps = con.prepareStatement(
-            "INSERT INTO prescription (PATIENT_ID, DOCTOR_ID, MEDICINE, DOSAGE, DURATION, DATE_ISSUED, NOTES) VALUES (?, ?, ?, ?, ?, ?, ?)");
-        ps.setInt(1, patientId);
+            "INSERT INTO prescription (CASE_ID, DOCTOR_ID, MEDICINE, DOSAGE, DURATION, DATE_ISSUED, NOTES) VALUES (?, ?, ?, ?, ?, ?, ?)"
+        );
+        ps.setInt(1, caseId);
         ps.setInt(2, doctorId);
         ps.setString(3, medicine);
         ps.setString(4, dosage);
         ps.setString(5, duration);
-        ps.setDate(6, new java.sql.Date(new Date().getTime())); // Current date
+        ps.setDate(6, new java.sql.Date(new Date().getTime()));
         ps.setString(7, notes != null ? notes : "");
-        
-        // Execute update
+
         int rowsAffected = ps.executeUpdate();
         if (rowsAffected > 0) {
             con.commit();
@@ -80,7 +86,7 @@
         }
 %>
                 <div class="alert alert-danger">
-                    Error: <%= e.getMessage() %>
+                    Error: <%=e.getMessage()%>
                     <a href="my_patients.jsp" class="btn btn-primary btn-sm pull-right">Back to Patients</a>
                 </div>
 <%
@@ -93,6 +99,5 @@
         </div>
     </div>
 </div>
-<script src="js/bootstrap.min.js"></script>
 </body>
 </html>

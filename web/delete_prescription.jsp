@@ -8,13 +8,11 @@
     <title>Delete Prescription - Hospital Management System</title>
     <link href="css/bootstrap.min.css" rel="stylesheet">
     <script src="js/jquery.js"></script>
+    <script src="js/bootstrap.min.js"></script>
     <style>
-        .action-buttons {
-            white-space: nowrap;
-        }
-        .panel {
-            margin-top: 20px;
-        }
+        .action-buttons { white-space: nowrap; }
+        .form-group { margin-bottom: 15px; }
+        .panel { margin-top: 20px; }
     </style>
 </head>
 <%@include file="header_doctor.jsp"%>
@@ -26,21 +24,25 @@
             <div class="panel-heading">Delete Prescription</div>
             <div class="panel-body">
 <%
+    if (session.getAttribute("id") == null) {
+        response.sendRedirect("login.jsp");
+        return;
+    }
     Connection con = null;
     PreparedStatement ps = null;
     try {
-        // Retrieve prescription ID
-        int prescId = Integer.parseInt(request.getParameter("prescId"));
-        
-        // Get database connection
-        con = (Connection)application.getAttribute("connection");
+        String prescIdStr = request.getParameter("prescId");
+        if (prescIdStr == null || !prescIdStr.matches("\\d+")) {
+            throw new Exception("Invalid or missing prescription ID.");
+        }
+        int prescId = Integer.parseInt(prescIdStr);
+
+        con = (Connection) application.getAttribute("connection");
         con.setAutoCommit(false); // Start transaction
-        
-        // Prepare SQL statement
+
         ps = con.prepareStatement("DELETE FROM prescription WHERE PRESCRIPTION_ID = ?");
         ps.setInt(1, prescId);
-        
-        // Execute update
+
         int rowsAffected = ps.executeUpdate();
         if (rowsAffected > 0) {
             con.commit();
@@ -51,7 +53,7 @@
                 </div>
 <%
         } else {
-            throw new Exception("Prescription not found.");
+            throw new Exception("Prescription not found or failed to delete.");
         }
     } catch (Exception e) {
         if (con != null) {
@@ -59,7 +61,7 @@
         }
 %>
                 <div class="alert alert-danger">
-                    Error: <%= e.getMessage() %>
+                    Error: <%=e.getMessage()%>
                     <a href="my_patients.jsp" class="btn btn-primary btn-sm pull-right">Back to Patients</a>
                 </div>
 <%
@@ -72,6 +74,5 @@
         </div>
     </div>
 </div>
-<script src="js/bootstrap.min.js"></script>
 </body>
 </html>

@@ -1,158 +1,103 @@
-
 <%@page import="java.sql.*"%>
-<%@page contentType="text/html" pageEncoding="UTF-8"%>
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Add Doctor Validation</title>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Add Doctor - Hospital Management System</title>
+    <link href="css/bootstrap.min.css" rel="stylesheet">
+    <script src="js/jquery.js"></script>
+    <script src="js/bootstrap.min.js"></script>
+    <style>
+        .action-buttons { white-space: nowrap; }
+        .form-group { margin-bottom: 15px; }
+        .panel { margin-top: 20px; }
+    </style>
 </head>
 <body>
-<% 
-    String doctname = request.getParameter("doctname");
-    String email = request.getParameter("email");
-    String pwd = request.getParameter("pwd");
-    String street = request.getParameter("street");
-    String area = request.getParameter("area");
-    String city = request.getParameter("city");
-    String state = request.getParameter("state");
-    String pincode = request.getParameter("pincode");
-    String phone = request.getParameter("phone");
-    String dept = request.getParameter("dept");
-
-    System.out.println("Add Doctor Parameters: doctname=" + doctname + ", email=" + email + 
-                       ", pwd=[PROTECTED], street=" + street + ", area=" + area + 
-                       ", city=" + city + ", state=" + state + ", pincode=" + pincode + 
-                       ", phone=" + phone + ", dept=" + dept);
-
-    Connection con = (Connection) application.getAttribute("connection");
+<div class="row">
+    <div class="col-md-12 maincontent">
+        <div class="panel panel-default contentinside">
+            <div class="panel-heading">Add Doctor</div>
+            <div class="panel-body">
+<%
+    // Assuming admin session validation
+    if (session.getAttribute("admin_id") == null) { // Adjust "admin_id" based on your login mechanism
+        response.sendRedirect("admin_login.jsp"); // Adjust redirect to your admin login page
+        return;
+    }
+    Connection con = null;
+    PreparedStatement ps = null;
     try {
-        if (con == null) {
-            System.out.println("Error: Database connection is null");
-            session.setAttribute("error-message", "Error: Database connection is not established.");
-            response.sendRedirect("doctor.jsp");
-            return;
+        String name = request.getParameter("name");
+        String email = request.getParameter("email");
+        String password = request.getParameter("password");
+        String phone = request.getParameter("phone");
+        String dept = request.getParameter("dept");
+        String status = request.getParameter("status");
+        String qual = request.getParameter("qual");
+        String exp = request.getParameter("exp");
+        String fees = request.getParameter("fees");
+
+        // Validate inputs
+        if (name == null || name.trim().isEmpty() || email == null || email.trim().isEmpty() ||
+            password == null || password.trim().isEmpty() || phone == null || phone.trim().isEmpty() ||
+            dept == null || dept.trim().isEmpty() || status == null || status.trim().isEmpty() ||
+            qual == null || qual.trim().isEmpty() || exp == null || !exp.matches("\\d+") ||
+            fees == null || !fees.matches("\\d+")) {
+            throw new Exception("All fields are required and must be valid.");
         }
 
-        // Server-side validation
-        if (doctname == null || doctname.trim().isEmpty()) {
-            System.out.println("Error: Doctor name is empty");
-            session.setAttribute("error-message", "Error: Doctor name cannot be empty.");
-            response.sendRedirect("doctor.jsp");
-            return;
-        }
-        if (email == null || email.trim().isEmpty()) {
-            System.out.println("Error: Email is empty");
-            session.setAttribute("error-message", "Error: Email cannot be empty.");
-            response.sendRedirect("doctor.jsp");
-            return;
-        }
-        if (pwd == null || pwd.trim().length() < 8) {
-            System.out.println("Error: Password less than 8 characters");
-            session.setAttribute("error-message", "Error: Password must be at least 8 characters.");
-            response.sendRedirect("doctor.jsp");
-            return;
-        }
-        if (street == null || street.trim().isEmpty()) {
-            System.out.println("Error: Street is empty");
-            session.setAttribute("error-message", "Error: Street cannot be empty.");
-            response.sendRedirect("doctor.jsp");
-            return;
-        }
-        if (area == null || area.trim().isEmpty()) {
-            System.out.println("Error: Area is empty");
-            session.setAttribute("error-message", "Error: Area cannot be empty.");
-            response.sendRedirect("doctor.jsp");
-            return;
-        }
-        if (city == null || city.trim().isEmpty()) {
-            System.out.println("Error: City is empty");
-            session.setAttribute("error-message", "Error: City cannot be empty.");
-            response.sendRedirect("doctor.jsp");
-            return;
-        }
-        if (state == null || state.trim().isEmpty()) {
-            System.out.println("Error: State is empty");
-            session.setAttribute("error-message", "Error: State cannot be empty.");
-            response.sendRedirect("doctor.jsp");
-            return;
-        }
-        if (pincode == null || !pincode.matches("\\d{6}")) {
-            System.out.println("Error: Invalid pincode");
-            session.setAttribute("error-message", "Error: Pincode must be exactly 6 digits.");
-            response.sendRedirect("doctor.jsp");
-            return;
-        }
-        if (phone == null || !phone.matches("\\d{10}")) {
-            System.out.println("Error: Invalid phone");
-            session.setAttribute("error-message", "Error: Phone must be exactly 10 digits.");
-            response.sendRedirect("doctor.jsp");
-            return;
-        }
+        int experience = Integer.parseInt(exp);
+        int consultationFees = Integer.parseInt(fees);
 
-        // Get DEPT_ID from department name
-        PreparedStatement psDept = con.prepareStatement("SELECT ID FROM department WHERE NAME = ?");
-        psDept.setString(1, dept);
-        ResultSet rsDept = psDept.executeQuery();
-        int deptId = 0;
-        if (rsDept.next()) {
-            deptId = rsDept.getInt("ID");
-            System.out.println("Found DEPT_ID: " + deptId + " for dept: " + dept);
-        } else {
-            System.out.println("Error: Department '" + dept + "' not found");
-            session.setAttribute("error-message", "Error: Department '" + dept + "' not found.");
-            response.sendRedirect("doctor.jsp");
-            return;
-        }
-        rsDept.close();
-        psDept.close();
+        con = (Connection) application.getAttribute("connection");
+        con.setAutoCommit(false); // Start transaction
 
-        // Simulate password hashing (replace with bcrypt in production)
-        String hashedPwd = pwd != null && !pwd.isEmpty() ? pwd : null;
-        System.out.println("Hashed password: " + (hashedPwd != null ? "[PROTECTED]" : "null"));
-
-        // Insert into doctor_info
-        PreparedStatement ps = con.prepareStatement(
-            "INSERT INTO doctor_info (NAME, EMAIL, PASSWORD, STREET, AREA, CITY, STATE, PINCODE, PHONE, DEPT_ID, COUNTRY, GENDER, AGE) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, NULL, NULL)"
+        ps = con.prepareStatement(
+            "INSERT INTO doctor_info (NAME, EMAIL, PASSWORD, PHONE, DEPT, STATUS, QUAL, EXP, FEES) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
         );
-        ps.setString(1, doctname);
+        ps.setString(1, name);
         ps.setString(2, email);
-        ps.setString(3, hashedPwd);
-        ps.setString(4, street);
-        ps.setString(5, area);
-        ps.setString(6, city);
-        ps.setString(7, state);
-        ps.setString(8, pincode);
-        ps.setString(9, phone);
-        ps.setInt(10, deptId);
+        ps.setString(3, password);
+        ps.setString(4, phone);
+        ps.setString(5, dept);
+        ps.setString(6, status);
+        ps.setString(7, qual);
+        ps.setInt(8, experience);
+        ps.setInt(9, consultationFees);
 
-        int i = ps.executeUpdate();
-        System.out.println("Insert result: " + i + " rows affected");
-
-        if (i > 0) {
-            session.setAttribute("success-message", "Doctor added successfully!");
+        int rowsAffected = ps.executeUpdate();
+        if (rowsAffected > 0) {
+            con.commit();
+%>
+                <div class="alert alert-success">
+                    Doctor added successfully!
+                    <a href="manage_doctors.jsp" class="btn btn-primary btn-sm pull-right">Back to Manage Doctors</a>
+                </div>
+<%
         } else {
-            session.setAttribute("error-message", "Error: Failed to add doctor.");
+            throw new Exception("Failed to add doctor.");
         }
-        response.sendRedirect("doctor.jsp");
-    } catch (SQLException e) {
-        System.out.println("SQLException in add_doctor_validation.jsp: " + e.getMessage());
-        e.printStackTrace();
-        session.setAttribute("error-message", "Error: " + e.getMessage());
-        response.sendRedirect("doctor.jsp");
     } catch (Exception e) {
-        System.out.println("Unexpected error in add_doctor_validation.jsp: " + e.getMessage());
-        e.printStackTrace();
-        session.setAttribute("error-message", "Unexpected error: " + e.getMessage());
-        response.sendRedirect("doctor.jsp");
-    } finally {
-        try {
-            if (con != null) con.commit();
-        } catch (SQLException e) {
-            System.out.println("Error committing transaction: " + e.getMessage());
-            e.printStackTrace();
+        if (con != null) {
+            try { con.rollback(); } catch (SQLException ignored) {}
         }
+%>
+                <div class="alert alert-danger">
+                    Error: <%=e.getMessage()%>
+                    <a href="manage_doctors.jsp" class="btn btn-primary btn-sm pull-right">Back to Manage Doctors</a>
+                </div>
+<%
+    } finally {
+        if (ps != null) try { ps.close(); } catch (SQLException ignored) {}
+        if (con != null) try { con.setAutoCommit(true); } catch (SQLException ignored) {}
     }
 %>
+            </div>
+        </div>
+    </div>
+</div>
 </body>
 </html>
-```
