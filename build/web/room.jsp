@@ -18,11 +18,10 @@
     <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
     <script>
         function confirmDelete() {
-            return confirm("Do You Really Want to Delete Room?");
+            return confirm("Do you really want to delete this room?");
         }
 
         $(document).ready(function() {
-            // Default rates for room types (in Rs)
             const roomTypeRates = {
                 'Common': 2000,
                 'Deluxe': 5000,
@@ -32,12 +31,20 @@
             // Update charges display in Add Room form
             $('#roomTypeAdd').on('change', function() {
                 const type = $(this).val();
-                const charges = roomTypeRates[type] || 2000;
+                const charges = roomTypeRates[type] || '';
                 $('#chargesDisplayAdd').val(charges);
             });
 
             // Trigger initial charges display
             $('#roomTypeAdd').trigger('change');
+
+            // Update charges display in Edit Room forms
+            $(document).on('change', '[id^="roomTypeEdit"]', function() {
+                const form = $(this).closest('form');
+                const type = $(this).val();
+                const charges = roomTypeRates[type] || '';
+                form.find('.charges-display').text(charges);
+            });
 
             // Validate Add Room form
             $('#addRoomForm').on('submit', function(e) {
@@ -59,13 +66,9 @@
             // Validate Edit Room forms
             $(document).on('submit', '[id^="editRoomForm"]', function(e) {
                 const bedNo = $(this).find('[id^="bedNoEdit"]').val();
-                const status = $(this).find('[id^="statusEdit"]').val().trim();
                 const type = $(this).find('[id^="roomTypeEdit"]').val();
                 if (!bedNo || bedNo <= 0) {
                     alert('Bed Number must be a positive number.');
-                    e.preventDefault();
-                } else if (!status) {
-                    alert('Status is required.');
                     e.preventDefault();
                 } else if (!type) {
                     alert('Room Type is required.');
@@ -74,7 +77,7 @@
             });
 
             // Ensure Room List tab is visible on click
-            $('a[href="#roomList"]').on('shown.bs.tab', function (e) {
+            $('a[href="#roomList"]').on('shown.bs.tab', function() {
                 $('#roomList').addClass('active in');
             });
         });
@@ -96,11 +99,12 @@
                         <!-- Room List -->
                         <div id="roomList" class="tab-pane active">
                             <%
-                                Connection c = (Connection)application.getAttribute("connection");
+                                Connection c = (Connection) application.getAttribute("connection");
                                 PreparedStatement ps = null;
+                                PreparedStatement patientPs = null;
                                 ResultSet rs = null;
                                 try {
-                                    ps = c.prepareStatement("SELECT room_no, bed_no, status, type, charges FROM room_info ORDER BY room_no, bed_no ASC");
+                                    ps = c.prepareStatement("SELECT ROOM_NO, BED_NO, STATUS, TYPE, CHARGES FROM room_info ORDER BY ROOM_NO, BED_NO ASC");
                                     rs = ps.executeQuery();
                                     if (!rs.isBeforeFirst()) {
                             %>
@@ -118,19 +122,32 @@
                                     <th>Options</th>
                                 </tr>
                                 <%
+                                    patientPs = c.prepareStatement("SELECT COUNT(*) FROM admission WHERE ROOM_NO = ? AND BED_NO = ? AND DISCHARGE_DATE IS NULL");
                                     while (rs.next()) {
-                                        int roomNo = rs.getInt("room_no");
-                                        int bedNo = rs.getInt("bed_no");
-                                        String status = rs.getString("status");
-                                        String type = rs.getString("type");
-                                        int charges = rs.getInt("charges");
+                                        int roomNo = rs.getInt("ROOM_NO");
+                                        int bedNo = rs.getInt("BED_NO");
+                                        String storedStatus = rs.getString("STATUS");
+                                        String type = rs.getString("TYPE");
+                                        Integer charges = rs.getInt("CHARGES");
+                                        if (rs.wasNull()) charges = null;
+
+                                        // Determine effective status
+                                        patientPs.setInt(1, roomNo);
+                                        patientPs.setInt(2, bedNo);
+                                        ResultSet patientRs = patientPs.executeQuery();
+                                        String effectiveStatus = storedStatus;
+                                        if (patientRs.next()) {
+                                            effectiveStatus = patientRs.getInt(1) > 0 ? "Occupied" : 
+                                                             storedStatus.equals("Maintenance") ? "Maintenance" : "Available";
+                                        }
+                                        patientRs.close();
                                 %>
                                 <tr>
                                     <td><%=roomNo%></td>
                                     <td><%=bedNo%></td>
-                                    <td><%=status%></td>
+                                    <td><%=effectiveStatus%></td>
                                     <td><%=type != null ? type : "N/A"%></td>
-                                    <td><%=charges > 0 ? charges : "N/A"%></td>
+                                    <td><%=charges != null ? charges : "N/A"%></td>
                                     <td>
                                         <button type="button" class="btn btn-primary" data-toggle="modal" data-target="#myModal<%=roomNo%><%=bedNo%>"><span class="glyphicon glyphicon-wrench" aria-hidden="true"></span></button>
                                         <a href="delete_room_validation.jsp?roomNo=<%=roomNo%>&bedNo=<%=bedNo%>" class="btn btn-danger" onclick="return confirmDelete()"><span class="glyphicon glyphicon-trash" aria-hidden="true"></span></a>
@@ -147,6 +164,7 @@
                             <p class="error-message">Error loading room list: <%=e.getMessage()%></p>
                             <%
                                 } finally {
+                                    if (patientPs != null) try { patientPs.close(); } catch (Exception e) {}
                                     if (rs != null) try { rs.close(); } catch (Exception e) {}
                                     if (ps != null) try { ps.close(); } catch (Exception e) {}
                                 }
@@ -170,37 +188,13 @@
                                             </div>
                                         </div>
                                         <div class="form-group">
-                                            <label class="col-sm-4 control-label">Availability Status</label>
-                                            <div class="col-sm-4">
-                                                <input type="text" class="form-control" name="status" value="Available" readonly>
-                                            </div>
-                                        </div>
-                                        <div class="form-group">
                                             <label class="col-sm-4 control-label">Room Type</label>
                                             <div class="col-sm-4">
                                                 <select name="type" class="form-control" id="roomTypeAdd" required>
                                                     <option value="" disabled selected>Select Room Type</option>
-                                                    <%
-                                                        PreparedStatement typePs = null;
-                                                        ResultSet typeRs = null;
-                                                        try {
-                                                            typePs = c.prepareStatement("SELECT DISTINCT type FROM room_info WHERE type IS NOT NULL ORDER BY type ASC");
-                                                            typeRs = typePs.executeQuery();
-                                                            while (typeRs.next()) {
-                                                                String roomType = typeRs.getString("type");
-                                                    %>
-                                                    <option value="<%=roomType%>"><%=roomType%></option>
-                                                    <%
-                                                            }
-                                                        } catch (Exception e) {
-                                                    %>
-                                                    <option value="" disabled>Error loading room types</option>
-                                                    <%
-                                                        } finally {
-                                                            if (typeRs != null) try { typeRs.close(); } catch (Exception e) {}
-                                                            if (typePs != null) try { typePs.close(); } catch (Exception e) {}
-                                                        }
-                                                    %>
+                                                    <option value="Common">Common</option>
+                                                    <option value="Deluxe">Deluxe</option>
+                                                    <option value="ICU">ICU</option>
                                                 </select>
                                             </div>
                                         </div>
@@ -223,22 +217,36 @@
                     <!-- Edit Room Modals -->
                     <%
                         PreparedStatement modalPs = null;
+                        PreparedStatement modalPatientPs = null;
                         ResultSet modalRs = null;
                         try {
-                            modalPs = c.prepareStatement("SELECT room_no, bed_no, status, type, charges FROM room_info ORDER BY room_no, bed_no ASC");
+                            modalPs = c.prepareStatement("SELECT ROOM_NO, BED_NO, STATUS, TYPE, CHARGES FROM room_info ORDER BY ROOM_NO, BED_NO ASC");
                             modalRs = modalPs.executeQuery();
+                            modalPatientPs = c.prepareStatement("SELECT COUNT(*) FROM admission WHERE ROOM_NO = ? AND BED_NO = ? AND DISCHARGE_DATE IS NULL");
                             while (modalRs.next()) {
-                                int roomNo = modalRs.getInt("room_no");
-                                int bedNo = modalRs.getInt("bed_no");
-                                String status = modalRs.getString("status");
-                                String type = modalRs.getString("type");
-                                int charges = modalRs.getInt("charges");
+                                int roomNo = modalRs.getInt("ROOM_NO");
+                                int bedNo = modalRs.getInt("BED_NO");
+                                String storedStatus = modalRs.getString("STATUS");
+                                String type = modalRs.getString("TYPE");
+                                Integer charges = modalRs.getInt("CHARGES");
+                                if (modalRs.wasNull()) charges = null;
+
+                                // Determine effective status for modal
+                                modalPatientPs.setInt(1, roomNo);
+                                modalPatientPs.setInt(2, bedNo);
+                                ResultSet patientRs = modalPatientPs.executeQuery();
+                                String effectiveStatus = storedStatus;
+                                if (patientRs.next()) {
+                                    effectiveStatus = patientRs.getInt(1) > 0 ? "Occupied" : 
+                                                     storedStatus.equals("Maintenance") ? "Maintenance" : "Available";
+                                }
+                                patientRs.close();
                     %>
                     <div class="modal fade" id="myModal<%=roomNo%><%=bedNo%>" tabindex="-1" role="dialog" aria-labelledby="myModalLabel<%=roomNo%><%=bedNo%>">
                         <div class="modal-dialog" role="document">
                             <div class="modal-content">
                                 <div class="modal-header">
-                                    <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                                    <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
                                     <h4 class="modal-title" id="myModalLabel<%=roomNo%><%=bedNo%>">Edit Room Information</h4>
                                 </div>
                                 <div class="modal-body">
@@ -261,41 +269,23 @@
                                                 <div class="form-group">
                                                     <label class="col-sm-4 control-label">Status</label>
                                                     <div class="col-sm-4">
-                                                        <input type="text" class="form-control" name="status" id="statusEdit<%=roomNo%><%=bedNo%>" value="<%=status%>">
+                                                        <input type="text" class="form-control" value="<%=effectiveStatus%>" readonly>
                                                     </div>
                                                 </div>
                                                 <div class="form-group">
                                                     <label class="col-sm-4 control-label">Room Type</label>
                                                     <div class="col-sm-4">
                                                         <select name="type" class="form-control" id="roomTypeEdit<%=roomNo%><%=bedNo%>" required>
-                                                            <%
-                                                                PreparedStatement editTypePs = null;
-                                                                ResultSet editTypeRs = null;
-                                                                try {
-                                                                    editTypePs = c.prepareStatement("SELECT DISTINCT type FROM room_info WHERE type IS NOT NULL ORDER BY type ASC");
-                                                                    editTypeRs = editTypePs.executeQuery();
-                                                                    while (editTypeRs.next()) {
-                                                                        String roomType = editTypeRs.getString("type");
-                                                            %>
-                                                            <option <%=type != null && type.equals(roomType) ? "selected" : ""%>><%=roomType%></option>
-                                                            <%
-                                                                    }
-                                                                } catch (Exception e) {
-                                                            %>
-                                                            <option value="" disabled>Error loading room types</option>
-                                                            <%
-                                                                } finally {
-                                                                    if (editTypeRs != null) try { editTypeRs.close(); } catch (Exception e) {}
-                                                                    if (editTypePs != null) try { editTypePs.close(); } catch (Exception e) {}
-                                                                }
-                                                            %>
+                                                            <option value="Common" <%= "Common".equals(type) ? "selected" : "" %>>Common</option>
+                                                            <option value="Deluxe" <%= "Deluxe".equals(type) ? "selected" : "" %>>Deluxe</option>
+                                                            <option value="ICU" <%= "ICU".equals(type) ? "selected" : "" %>>ICU</option>
                                                         </select>
                                                     </div>
                                                 </div>
                                                 <div class="form-group">
                                                     <label class="col-sm-4 control-label">Charges (Rs/day)</label>
                                                     <div class="col-sm-4">
-                                                        <span class="charges-display"><%=charges > 0 ? charges : "N/A"%></span>
+                                                        <span class="charges-display"><%=charges != null ? charges : "N/A"%></span>
                                                     </div>
                                                 </div>
                                                 <div class="modal-footer">
@@ -316,6 +306,7 @@
                     <p class="error-message">Error loading edit modals: <%=e.getMessage()%></p>
                     <%
                         } finally {
+                            if (modalPatientPs != null) try { modalPatientPs.close(); } catch (Exception e) {}
                             if (modalRs != null) try { modalRs.close(); } catch (Exception e) {}
                             if (modalPs != null) try { modalPs.close(); } catch (Exception e) {}
                         }

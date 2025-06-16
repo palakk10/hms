@@ -1,136 +1,145 @@
-<%@page import="java.sql.*" %>
-<%@page contentType="text/html" pageEncoding="UTF-8" %>
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Delete Patient Validation</title>
-</head>
-<body>
-<% 
-    // Retrieve form parameters
-    String patientId = request.getParameter("patientId");
-    String roomNo = request.getParameter("roomNo");
-    String bedNo = request.getParameter("bedNo");
-
-    // Log parameters
-    System.out.println("Delete Patient Parameters: patientId=" + patientId + ", roomNo=" + roomNo + ", bedNo=" + bedNo);
-
-    Connection con = (Connection) application.getAttribute("connection");
-    PreparedStatement ps = null;
-    try {
-        // Validate connection
-        if (con == null) {
-            System.out.println("ERROR: Database connection is null");
-            session.setAttribute("error-message", "Database connection failed.");
-            response.sendRedirect("patients.jsp");
-            return;
+<%@page import="java.sql.*"%>
+<%!
+    // Check if patient has active admissions
+    boolean hasActiveAdmission(Connection conn, int patientId) throws SQLException {
+        PreparedStatement ps = null;
+        ResultSet rs = null;
+        try {
+            ps = conn.prepareStatement("SELECT COUNT(*) FROM admission WHERE PATIENT_ID = ? AND DISCHARGE_DATE IS NULL");
+            ps.setInt(1, patientId);
+            rs = ps.executeQuery();
+            if (rs.next()) {
+                return rs.getInt(1) > 0;
+            }
+            return false;
+        } finally {
+            if (rs != null) try { rs.close(); } catch (SQLException ignore) {}
+            if (ps != null) try { ps.close(); } catch (SQLException ignore) {}
         }
-        System.out.println("Database connection established");
+    }
 
-        // Validate parameters
-        if (patientId == null || patientId.trim().isEmpty() || !patientId.matches("\\d+")) {
-            System.out.println("ERROR: Invalid Patient ID: " + patientId);
-            session.setAttribute("error-message", "Invalid Patient ID.");
-            response.sendRedirect("patients.jsp");
-            return;
+    // Check if patient has any cases
+    boolean hasCases(Connection conn, int patientId) throws SQLException {
+        PreparedStatement ps = null;
+        ResultSet rs = null;
+        try {
+            ps = conn.prepareStatement("SELECT COUNT(*) FROM case_master WHERE PATIENT_ID = ?");
+            ps.setInt(1, patientId);
+            rs = ps.executeQuery();
+            if (rs.next()) {
+                return rs.getInt(1) > 0;
+            }
+            return false;
+        } finally {
+            if (rs != null) try { rs.close(); } catch (SQLException ignore) {}
+            if (ps != null) try { ps.close(); } catch (SQLException ignore) {}
         }
-        if (roomNo == null || roomNo.trim().isEmpty() || !roomNo.matches("\\d+")) {
-            System.out.println("ERROR: Invalid Room Number: " + roomNo);
-            session.setAttribute("error-message", "Invalid Room Number.");
-            response.sendRedirect("patients.jsp");
-            return;
+    }
+
+    // Check if patient has any pathology records
+    boolean hasPathologyRecords(Connection conn, int patientId) throws SQLException {
+        PreparedStatement ps = null;
+        ResultSet rs = null;
+        try {
+            ps = conn.prepareStatement("SELECT COUNT(*) FROM pathology WHERE ID = ?");
+            ps.setInt(1, patientId);
+            rs = ps.executeQuery();
+            if (rs.next()) {
+                return rs.getInt(1) > 0;
+            }
+            return false;
+        } finally {
+            if (rs != null) try { rs.close(); } catch (SQLException ignore) {}
+            if (ps != null) try { ps.close(); } catch (SQLException ignore) {}
         }
-        if (bedNo == null || bedNo.trim().isEmpty() || !bedNo.matches("\\d+")) {
-            System.out.println("ERROR: Invalid Bed Number: " + bedNo);
-            session.setAttribute("error-message", "Invalid Bed Number.");
-            response.sendRedirect("patients.jsp");
-            return;
+    }
+
+    // Check if patient has any billing records
+    boolean hasBillingRecords(Connection conn, int patientId) throws SQLException {
+        PreparedStatement ps = null;
+        ResultSet rs = null;
+        try {
+            ps = conn.prepareStatement("SELECT COUNT(*) FROM billing WHERE ID_NO = ?");
+            ps.setInt(1, patientId);
+            rs = ps.executeQuery();
+            if (rs.next()) {
+                return rs.getInt(1) > 0;
+            }
+            return false;
+        } finally {
+            if (rs != null) try { rs.close(); } catch (SQLException ignore) {}
+            if (ps != null) try { ps.close(); } catch (SQLException ignore) {}
         }
-
-        int pId = Integer.parseInt(patientId);
-        int rNo = Integer.parseInt(roomNo);
-        int bNo = Integer.parseInt(bedNo);
-
-        // Verify patient exists
-        ps = con.prepareStatement("SELECT ID FROM patient_info WHERE ID = ?");
-        ps.setInt(1, pId);
-        ResultSet rs = ps.executeQuery();
-        if (!rs.next()) {
-            System.out.println("ERROR: Patient ID not found: " + pId);
-            session.setAttribute("error-message", "Patient not found.");
-            rs.close();
-            ps.close();
-            response.sendRedirect("patients.jsp");
-            return;
-        }
-        rs.close();
-        ps.close();
-
-        // Delete related pathology records to satisfy foreign key constraint
-        System.out.println("Deleting related pathology records for patient ID: " + pId);
-        ps = con.prepareStatement("DELETE FROM pathology WHERE ID = ?");
-        ps.setInt(1, pId);
-        int pathologyRows = ps.executeUpdate();
-        System.out.println("Pathology records deleted: " + pathologyRows);
-        ps.close();
-
-        // Delete patient record
-        System.out.println("Deleting patient_info record for ID: " + pId);
-        ps = con.prepareStatement("DELETE FROM patient_info WHERE ID = ?");
-        ps.setInt(1, pId);
-        int rowsAffected = ps.executeUpdate();
-        System.out.println("Rows affected by patient_info deletion: " + rowsAffected);
-        ps.close();
-
-        if (rowsAffected > 0) {
-            // Update room status
-            System.out.println("Updating room_info: ROOM_NO=" + rNo + ", BED_NO=" + bNo + " to Available");
-            ps = con.prepareStatement("UPDATE room_info SET STATUS = 'Available' WHERE ROOM_NO = ? AND BED_NO = ?");
-            ps.setInt(1, rNo);
-            ps.setInt(2, bNo);
-            int roomRows = ps.executeUpdate();
-            System.out.println("Rows affected by room_info update: " + roomRows);
-            ps.close();
-
-            System.out.println("Committing transaction");
-            con.commit();
-%>
-            <div style="text-align:center;margin-top:25%">
-                <font color="blue">
-                    <script type="text/javascript">
-                        function Redirect() {
-                            window.location = "patients.jsp";
-                        }
-                        document.write("<h2>Patient Removed Successfully</h2><br><br>");
-                        document.write("<h3>Redirecting you to home page....</h3>");
-                        setTimeout('Redirect()', 3000);
-                    </script>
-                </font>
-            </div>
-<%
-        } else {
-            System.out.println("ERROR: Deletion failed for patient ID: " + pId);
-            session.setAttribute("error-message", "Failed to delete patient. No matching record found.");
-            response.sendRedirect("patients.jsp");
-        }
-    } catch (SQLException e) {
-        System.out.println("SQLException: " + e.getMessage());
-        e.printStackTrace();
-        session.setAttribute("error-message", "Database error: " + e.getMessage());
-        response.sendRedirect("patients.jsp");
-    } catch (NumberFormatException e) {
-        System.out.println("NumberFormatException: " + e.getMessage());
-        e.printStackTrace();
-        session.setAttribute("error-message", "Invalid number format: " + e.getMessage());
-        response.sendRedirect("patients.jsp");
-    } catch (Exception e) {
-        System.out.println("Unexpected error: " + e.getMessage());
-        e.printStackTrace();
-        session.setAttribute("error-message", "Unexpected error: " + e.getMessage());
-        response.sendRedirect("patients.jsp");
-    } finally {
-        if (ps != null) try { ps.close(); } catch (SQLException e) { System.out.println("Error closing PreparedStatement: " + e.getMessage()); }
     }
 %>
-</body>
-</html>
+<%
+    response.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+    String email = (String) session.getAttribute("email");
+    if (email == null) {
+        response.sendRedirect("index.jsp");
+        return;
+    }
+
+    Connection conn = (Connection) application.getAttribute("connection");
+    if (conn == null || conn.isClosed()) {
+        session.setAttribute("error-message", "Database connection is unavailable.");
+        response.sendRedirect("patients.jsp");
+        return;
+    }
+
+    String patientIdStr = request.getParameter("patientId");
+    String roomNoStr = request.getParameter("roomNo");
+    String bedNoStr = request.getParameter("bedNo");
+
+    int patientId;
+    try {
+        patientId = Integer.parseInt(patientIdStr);
+    } catch (NumberFormatException e) {
+        session.setAttribute("error-message", "Invalid patient ID.");
+        response.sendRedirect("patients.jsp");
+        return;
+    }
+
+    // Check for dependencies
+    try {
+        if (hasActiveAdmission(conn, patientId)) {
+            session.setAttribute("error-message", "Cannot delete patient with active admission. Please discharge the patient first.");
+            response.sendRedirect("patients.jsp");
+            return;
+        }
+        if (hasCases(conn, patientId)) {
+            session.setAttribute("error-message", "Cannot delete patient with existing cases.");
+            response.sendRedirect("patients.jsp");
+            return;
+        }
+        if (hasPathologyRecords(conn, patientId)) {
+            session.setAttribute("error-message", "Cannot delete patient with existing pathology records.");
+            response.sendRedirect("patients.jsp");
+            return;
+        }
+        if (hasBillingRecords(conn, patientId)) {
+            session.setAttribute("error-message", "Cannot delete patient with existing billing records.");
+            response.sendRedirect("patients.jsp");
+            return;
+        }
+
+        // Delete the patient
+        PreparedStatement psDelete = null;
+        try {
+            psDelete = conn.prepareStatement("DELETE FROM patient_info WHERE ID = ?");
+            psDelete.setInt(1, patientId);
+            int rowsDeleted = psDelete.executeUpdate();
+            if (rowsDeleted > 0) {
+                session.setAttribute("success-message", "Patient deleted successfully.");
+            } else {
+                session.setAttribute("error-message", "Patient not found.");
+            }
+        } finally {
+            if (psDelete != null) try { psDelete.close(); } catch (SQLException ignore) {}
+        }
+    } catch (SQLException e) {
+        session.setAttribute("error-message", "Database error: " + e.getMessage());
+    }
+
+    response.sendRedirect("patients.jsp");
+%>

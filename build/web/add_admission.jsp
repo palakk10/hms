@@ -173,6 +173,12 @@
                                 </div>
                             </div>
                             <div class="form-group">
+                                <label class="col-sm-3 control-label">Admission Date</label>
+                                <div class="col-sm-9">
+                                    <input type="date" name="admit_date" class="form-control" value="2025-06-16" required>
+                                </div>
+                            </div>
+                            <div class="form-group">
                                 <div class="col-sm-offset-3 col-sm-9">
                                     <button type="submit" class="btn btn-primary">Submit Admission</button>
                                     <a href="receptionist.jsp" class="btn btn-default">Cancel</a>
@@ -185,24 +191,35 @@
                                 String caseId = request.getParameter("case_id");
                                 String doctorId = request.getParameter("doctor_id");
                                 String roomBed = request.getParameter("room_bed");
-                                if (caseId != null && doctorId != null && roomBed != null) {
+                                String admitDate = request.getParameter("admit_date");
+                                if (caseId != null && doctorId != null && roomBed != null && admitDate != null) {
                                     String[] roomBedParts = roomBed.split("_");
                                     String roomNo = roomBedParts[0];
                                     String bedNo = roomBedParts[1];
                                     PreparedStatement psInsert = null;
                                     PreparedStatement psUpdateRoom = null;
+                                    PreparedStatement psValidateDoctor = null;
+                                    ResultSet rsValidateDoctor = null;
                                     try {
                                         c.setAutoCommit(false);
+                                        // Validate doctor_id
+                                        psValidateDoctor = c.prepareStatement("SELECT ID FROM doctor_info WHERE ID = ?");
+                                        psValidateDoctor.setInt(1, Integer.parseInt(doctorId));
+                                        rsValidateDoctor = psValidateDoctor.executeQuery();
+                                        if (!rsValidateDoctor.next()) {
+                                            throw new SQLException("Invalid doctor ID: " + doctorId);
+                                        }
                                         // Insert into admission
                                         psInsert = c.prepareStatement(
                                             "INSERT INTO admission (CASE_ID, PATIENT_ID, DOCTOR_ID, ROOM_NO, BED_NO, ADMIT_DATE) " +
-                                            "VALUES (?, ?, ?, ?, ?, CURDATE())"
+                                            "VALUES (?, ?, ?, ?, ?, ?)"
                                         );
                                         psInsert.setInt(1, Integer.parseInt(caseId));
                                         psInsert.setInt(2, Integer.parseInt(patientId));
                                         psInsert.setInt(3, Integer.parseInt(doctorId));
                                         psInsert.setInt(4, Integer.parseInt(roomNo));
                                         psInsert.setInt(5, Integer.parseInt(bedNo));
+                                        psInsert.setDate(6, java.sql.Date.valueOf(admitDate));
                                         int rows = psInsert.executeUpdate();
                                         // Update room status
                                         psUpdateRoom = c.prepareStatement(
@@ -212,15 +229,26 @@
                                         psUpdateRoom.setInt(2, Integer.parseInt(bedNo));
                                         psUpdateRoom.executeUpdate();
                                         c.commit();
+                                        session.setAttribute("success-message", "Admission added successfully.");
                                         response.sendRedirect("receptionist.jsp?status=success");
                                     } catch (SQLException e) {
                                         c.rollback();
+                                        session.setAttribute("error-message", "Error: " + e.getMessage());
                                         out.println("<div class='alert alert-danger'>Error: " + e.getMessage() + "</div>");
+                                    } catch (NumberFormatException e) {
+                                        c.rollback();
+                                        session.setAttribute("error-message", "Error: Invalid input format.");
+                                        out.println("<div class='alert alert-danger'>Error: Invalid input format.</div>");
                                     } finally {
                                         c.setAutoCommit(true);
+                                        if (rsValidateDoctor != null) try { rsValidateDoctor.close(); } catch (SQLException e) {}
+                                        if (psValidateDoctor != null) try { psValidateDoctor.close(); } catch (SQLException e) {}
                                         if (psInsert != null) try { psInsert.close(); } catch (SQLException e) {}
                                         if (psUpdateRoom != null) try { psUpdateRoom.close(); } catch (SQLException e) {}
                                     }
+                                } else {
+                                    session.setAttribute("error-message", "Error: Missing required fields.");
+                                    out.println("<div class='alert alert-danger'>Error: Missing required fields.</div>");
                                 }
                             }
                         %>

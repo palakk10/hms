@@ -1,209 +1,203 @@
-<%@page import="java.sql.*" %>
-<%@page contentType="text/html" pageEncoding="UTF-8" %>
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Edit Patient Validation</title>
-    <style>
-        .success-message {
-            text-align: center;
-            margin-top: 25%;
-            color: green;
+<%@page import="java.sql.*, java.text.SimpleDateFormat, java.util.Date"%>
+<%!
+    // Method to validate email uniqueness (excluding the current patient)
+    boolean isEmailUnique(Connection conn, String email, int patientId) throws SQLException {
+        PreparedStatement ps = null;
+        ResultSet rs = null;
+        try {
+            ps = conn.prepareStatement("SELECT ID FROM patient_info WHERE EMAIL = ? AND ID != ?");
+            ps.setString(1, email);
+            ps.setInt(2, patientId);
+            rs = ps.executeQuery();
+            return !rs.next();
+        } finally {
+            if (rs != null) try { rs.close(); } catch (SQLException ignore) {}
+            if (ps != null) try { ps.close(); } catch (SQLException ignore) {}
         }
-    </style>
-</head>
-<body>
-<% 
-    // Get all parameters from the request
-    String pid = request.getParameter("patientid");
-    String name = request.getParameter("patientname");
-    String email = request.getParameter("email");
-    String pwd = request.getParameter("pwd");
+    }
+
+    // Method to calculate age from DOB
+    int calculateAge(Date dob) {
+        if (dob == null) return -1;
+        Date today = new Date();
+        long diffInMillies = today.getTime() - dob.getTime();
+        return (int) (diffInMillies / (1000L * 60 * 60 * 24 * 365));
+    }
+%>
+<%
+    response.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+    String email = (String) session.getAttribute("email");
+    if (email == null) {
+        response.sendRedirect("index.jsp");
+        return;
+    }
+
+    Connection conn = (Connection) application.getAttribute("connection");
+    if (conn == null || conn.isClosed()) {
+        session.setAttribute("error-message", "Database connection is unavailable.");
+        response.sendRedirect("patients.jsp");
+        return;
+    }
+
+    String patientIdStr = request.getParameter("patientid");
+    String name = request.getParameter("pname");
+    String gender = request.getParameter("gender");
+    String ageStr = request.getParameter("age");
+    String dobStr = request.getParameter("dob");
+    String bloodGroup = request.getParameter("bgroup");
+    String phone = request.getParameter("phone");
+    String patientEmail = request.getParameter("email");
     String street = request.getParameter("street");
     String area = request.getParameter("area");
     String city = request.getParameter("city");
     String state = request.getParameter("state");
-    String pincode = request.getParameter("pincode");
     String country = request.getParameter("country");
-    String phone = request.getParameter("phone");
-    String rov = request.getParameter("rov");
-    String roomNo = request.getParameter("roomNo");
-    String bedNo = request.getParameter("bed_no");
-    String doctId = request.getParameter("doct");
-    String gender = request.getParameter("gender");
-    String joindate = request.getParameter("admit_date");
-    String age = request.getParameter("age");
-    String bgroup = request.getParameter("bgroup");
+    String pincode = request.getParameter("pincode");
+    String medicalHistory = request.getParameter("medical_history");
 
-    // Debug logging
-    System.out.println("Edit Patient Parameters: patientid=" + pid + ", name=" + name + 
-                       ", email=" + email + ", street=" + street + ", area=" + area + 
-                       ", city=" + city + ", state=" + state + ", pincode=" + pincode + 
-                       ", country=" + country + ", phone=" + phone + ", rov=" + rov + 
-                       ", roomNo=" + roomNo + ", bedNo=" + bedNo + ", doctId=" + doctId + 
-                       ", gender=" + gender + ", joindate=" + joindate + ", age=" + age + 
-                       ", bgroup=" + bgroup);
+    // Validate inputs
+    if (patientIdStr == null || name == null || name.trim().isEmpty() || gender == null || ageStr == null || bloodGroup == null || phone == null || patientEmail == null) {
+        session.setAttribute("error-message", "All required fields must be filled.");
+        response.sendRedirect("patients.jsp");
+        return;
+    }
 
-    Connection con = (Connection) application.getAttribute("connection");
-    PreparedStatement ps = null;
-    ResultSet rs = null;
-    
+    int patientId;
+    int age;
     try {
-        // Validate connection
-        if (con == null || con.isClosed()) {
-            System.out.println("Error: Database connection is not available");
-            session.setAttribute("error-message", "Database connection error. Please try again.");
+        patientId = Integer.parseInt(patientIdStr);
+        age = Integer.parseInt(ageStr);
+        if (age < 0 || age > 150) {
+            session.setAttribute("error-message", "Invalid age. Must be between 0 and 150.");
             response.sendRedirect("patients.jsp");
             return;
         }
-
-        // Start transaction
-        con.setAutoCommit(false);
-
-        // Server-side validation
-        if (pid == null || pid.trim().isEmpty() || !pid.matches("\\d+")) {
-            throw new Exception("Invalid Patient ID");
-        }
-        if (name == null || name.trim().isEmpty()) {
-            throw new Exception("Patient name cannot be empty");
-        }
-        if (email == null || email.trim().isEmpty() || !email.contains("@")) {
-            throw new Exception("Valid email is required");
-        }
-        if (pwd == null || pwd.trim().length() < 8) {
-            throw new Exception("Password must be at least 8 characters");
-        }
-        // [Add all other validations as needed]
-
-        // Verify patient exists
-        ps = con.prepareStatement("SELECT room_no, bed_no FROM patient_info WHERE id = ?");
-        ps.setInt(1, Integer.parseInt(pid));
-        rs = ps.executeQuery();
-        
-        if (!rs.next()) {
-            throw new Exception("Patient not found with ID: " + pid);
-        }
-        
-        int currentRoomNo = rs.getInt("room_no");
-        int currentBedNo = rs.getInt("bed_no");
-        rs.close();
-        ps.close();
-
-        // Check if room/bed changed
-        int newRoomNo = Integer.parseInt(roomNo);
-        int newBedNo = Integer.parseInt(bedNo);
-        boolean roomChanged = (newRoomNo != currentRoomNo) || (newBedNo != currentBedNo);
-
-        if (roomChanged) {
-            // Check new room/bed availability
-            ps = con.prepareStatement(
-                "SELECT status FROM room_info WHERE room_no = ? AND bed_no = ? FOR UPDATE");
-            ps.setInt(1, newRoomNo);
-            ps.setInt(2, newBedNo);
-            rs = ps.executeQuery();
-            
-            if (!rs.next()) {
-                throw new Exception("Invalid Room/Bed combination");
-            } else if ("busy".equalsIgnoreCase(rs.getString("status"))) {
-                throw new Exception("Selected Room/Bed is already occupied");
-            }
-            rs.close();
-            ps.close();
-        }
-
-        // Update patient info
-        String updateSql = "UPDATE patient_info SET " +
-            "PNAME=?, GENDER=?, AGE=?, BGROUP=?, PHONE=?, " +
-            "STREET=?, AREA=?, CITY=?, STATE=?, PINCODE=?, COUNTRY=?, " +
-            "REA_OF_VISIT=?, ROOM_NO=?, BED_NO=?, DOCTOR_ID=?, DATE_AD=?, " +
-            "EMAIL=?, PASSWORD=? WHERE ID=?";
-        
-        ps = con.prepareStatement(updateSql);
-        ps.setString(1, name);
-        ps.setString(2, gender);
-        ps.setInt(3, Integer.parseInt(age));
-        ps.setString(4, bgroup);
-        ps.setString(5, phone);
-        ps.setString(6, street);
-        ps.setString(7, area);
-        ps.setString(8, city);
-        ps.setString(9, state);
-        ps.setString(10, pincode);
-        ps.setString(11, country);
-        ps.setString(12, rov);
-        ps.setInt(13, newRoomNo);
-        ps.setInt(14, newBedNo);
-        ps.setInt(15, Integer.parseInt(doctId));
-        ps.setString(16, joindate);
-        ps.setString(17, email);
-        ps.setString(18, pwd); // Note: Should be hashed in production
-        ps.setInt(19, Integer.parseInt(pid));
-
-        int rowsAffected = ps.executeUpdate();
-        System.out.println("Patient update rows affected: " + rowsAffected);
-
-        if (rowsAffected == 0) {
-            throw new Exception("No patient record updated - ID may not exist");
-        }
-
-        if (roomChanged) {
-            // Update new room status
-            ps = con.prepareStatement(
-                "UPDATE room_info SET status='busy' WHERE room_no=? AND bed_no=?");
-            ps.setInt(1, newRoomNo);
-            ps.setInt(2, newBedNo);
-            int updated = ps.executeUpdate();
-            System.out.println("New room update rows: " + updated);
-            ps.close();
-
-            // Update old room status
-            ps = con.prepareStatement(
-                "UPDATE room_info SET status='available' WHERE room_no=? AND bed_no=?");
-            ps.setInt(1, currentRoomNo);
-            ps.setInt(2, currentBedNo);
-            updated = ps.executeUpdate();
-            System.out.println("Old room update rows: " + updated);
-            ps.close();
-        }
-
-        // Commit transaction
-        con.commit();
-        System.out.println("Transaction committed successfully");
-        
-        // Set success message
-        session.setAttribute("success-message", "Patient details updated successfully!");
-%>
-        <div class="success-message">
-            <h2>Patient Details Updated Successfully</h2>
-            <p>Redirecting to patients list...</p>
-            <script>
-                setTimeout(function() {
-                    window.location.href = "patients.jsp";
-                }, 3000);
-            </script>
-        </div>
-<%
-    } catch (Exception e) {
-        try {
-            if (con != null) con.rollback();
-        } catch (SQLException ex) {
-            System.out.println("Error rolling back transaction: " + ex.getMessage());
-        }
-        
-        System.out.println("Error updating patient: " + e.getMessage());
-        e.printStackTrace();
-        
-        session.setAttribute("error-message", "Error: " + e.getMessage());
+    } catch (NumberFormatException e) {
+        session.setAttribute("error-message", "Invalid patient ID or age format.");
         response.sendRedirect("patients.jsp");
-    } finally {
-        try { 
-            if (rs != null) rs.close(); 
-            if (ps != null) ps.close();
-            if (con != null) con.setAutoCommit(true); 
-        } catch (SQLException e) {
-            System.out.println("Error cleaning up resources: " + e.getMessage());
+        return;
+    }
+
+    // Validate email format
+    String emailRegex = "^[\\w-\\.]+@([\\w-]+\\.)+[\\w-]{2,4}$";
+    if (!patientEmail.matches(emailRegex)) {
+        session.setAttribute("error-message", "Invalid email format.");
+        response.sendRedirect("patients.jsp");
+        return;
+    }
+
+    // Check email uniqueness
+    try {
+        if (!isEmailUnique(conn, patientEmail, patientId)) {
+            session.setAttribute("error-message", "Email is already in use by another patient.");
+            response.sendRedirect("patients.jsp");
+            return;
+        }
+    } catch (SQLException e) {
+        session.setAttribute("error-message", "Database error while checking email: " + e.getMessage());
+        response.sendRedirect("patients.jsp");
+        return;
+    }
+
+    // Validate phone format (10 digits)
+    if (!phone.matches("\\d{10}")) {
+        session.setAttribute("error-message", "Phone number must be 10 digits.");
+        response.sendRedirect("patients.jsp");
+        return;
+    }
+
+    // Validate pincode (6 digits, optional)
+    if (pincode != null && !pincode.trim().isEmpty() && !pincode.matches("\\d{6}")) {
+        session.setAttribute("error-message", "Pincode must be 6 digits.");
+        response.sendRedirect("patients.jsp");
+        return;
+    }
+
+    // Validate DOB and age consistency
+    Date dob = null;
+    if (dobStr != null && !dobStr.trim().isEmpty()) {
+        try {
+            SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
+            sdf.setLenient(false);
+            dob = sdf.parse(dobStr);
+            if (dob.after(new Date())) {
+                session.setAttribute("error-message", "Date of birth cannot be in the future.");
+                response.sendRedirect("patients.jsp");
+                return;
+            }
+            int calculatedAge = calculateAge(dob);
+            if (Math.abs(calculatedAge - age) > 1) {
+                session.setAttribute("error-message", "Age does not match date of birth.");
+                response.sendRedirect("patients.jsp");
+                return;
+            }
+        } catch (Exception e) {
+            session.setAttribute("error-message", "Invalid date of birth format.");
+            response.sendRedirect("patients.jsp");
+            return;
         }
     }
+
+    // Validate gender and blood group
+    String[] validGenders = {"Male", "Female", "Other"};
+    String[] validBloodGroups = {"A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"};
+    boolean validGender = false;
+    boolean validBloodGroup = false;
+    for (String g : validGenders) {
+        if (g.equals(gender)) {
+            validGender = true;
+            break;
+        }
+    }
+    for (String bg : validBloodGroups) {
+        if (bg.equals(bloodGroup)) {
+            validBloodGroup = true;
+            break;
+        }
+    }
+    if (!validGender) {
+        session.setAttribute("error-message", "Invalid gender selected.");
+        response.sendRedirect("patients.jsp");
+        return;
+    }
+    if (!validBloodGroup) {
+        session.setAttribute("error-message", "Invalid blood group selected.");
+        response.sendRedirect("patients.jsp");
+        return;
+    }
+
+    // Update patient information
+    PreparedStatement ps = null;
+    try {
+        String sql = "UPDATE patient_info SET PNAME = ?, GENDER = ?, AGE = ?, DOB = ?, BGROUP = ?, PHONE = ?, EMAIL = ?, STREET = ?, AREA = ?, CITY = ?, STATE = ?, COUNTRY = ?, PINCODE = ?, MEDICAL_HISTORY = ? WHERE ID = ?";
+        ps = conn.prepareStatement(sql);
+        ps.setString(1, name.trim());
+        ps.setString(2, gender);
+        ps.setInt(3, age);
+        ps.setString(4, dobStr != null && !dobStr.trim().isEmpty() ? dobStr : null);
+        ps.setString(5, bloodGroup);
+        ps.setString(6, phone);
+        ps.setString(7, patientEmail);
+        ps.setString(8, street != null ? street.trim() : null);
+        ps.setString(9, area != null ? area.trim() : null);
+        ps.setString(10, city != null ? city.trim() : null);
+        ps.setString(11, state != null ? state.trim() : null);
+        ps.setString(12, country != null ? country.trim() : null);
+        ps.setString(13, pincode != null && !pincode.trim().isEmpty() ? pincode : null);
+        ps.setString(14, medicalHistory != null ? medicalHistory.trim() : null);
+        ps.setInt(15, patientId);
+
+        int rowsUpdated = ps.executeUpdate();
+        if (rowsUpdated > 0) {
+            session.setAttribute("success-message", "Patient updated successfully.");
+        } else {
+            session.setAttribute("error-message", "Patient not found or no changes made.");
+        }
+    } catch (SQLException e) {
+        session.setAttribute("error-message", "Database error: " + e.getMessage());
+    } finally {
+        if (ps != null) try { ps.close(); } catch (SQLException ignore) {}
+    }
+
+    response.sendRedirect("patients.jsp");
 %>
-</body>
-</html>

@@ -1,108 +1,115 @@
-<%@page import="java.sql.*"%>
-<%
-    String oldEmail = (String)session.getAttribute("email");
-    String newEmail = request.getParameter("email");
-    String opass1 = request.getParameter("opass");
-    String npass = request.getParameter("npass");
-    String cpass = request.getParameter("cpass");
-%>
-<%
-    Connection c = (Connection)application.getAttribute("connection");
-    // Check if new email already exists (if different from old email)
-    boolean emailExists = false;
-    if (!oldEmail.equals(newEmail)) {
-        PreparedStatement checkPs = c.prepareStatement("SELECT COUNT(*) FROM staffinfo WHERE email=?");
-        checkPs.setString(1, newEmail);
-        ResultSet rsCheck = checkPs.executeQuery();
-        rsCheck.next();
-        emailExists = rsCheck.getInt(1) > 0;
-        rsCheck.close();
-        checkPs.close();
-    }
+<!DOCTYPE html>
+<%@page import="java.sql.*, java.util.*"%>
+<html lang="en">
+<%@include file="header.jsp"%>
+<body>
+    <div class="row">
+        <%@include file="menu.jsp"%>
+        <div class="col-md-10 maincontent">
+            <div class="panel panel-default contentinside">
+                <div class="panel-heading">Change Password Validation</div>
+                <div class="panel-body">
+                    <%
+                        String email = request.getParameter("email");
+                        String opass = request.getParameter("opass");
+                        String npass = request.getParameter("npass");
+                        String cpass = request.getParameter("cpass");
 
-    if (emailExists) {
-%>
-<div style="text-align:center;margin-top:25%">
-<font color="red">
-<script type="text/javascript">
-function Redirect() {
-    history.back();
-}
-document.write("<h2>Email Already Exists</h2><br><Br>");
-document.write("<h3>Redirecting you to back page....</h3>");
-setTimeout('Redirect()', 3000);
-</script>
-</font>
-</div>
-<%
-    } else {
-        PreparedStatement ps = c.prepareStatement("SELECT password FROM staffinfo WHERE email=?");
-        ps.setString(1, oldEmail);
-        ResultSet rs = ps.executeQuery();
-        if (rs.next()) {
-            String opass2 = rs.getString(1);
-            if (opass1.equals(opass2)) {
-                if (npass.equals(cpass)) {
-                    PreparedStatement updatePs = c.prepareStatement("UPDATE staffinfo SET email=?, password=? WHERE email=?");
-                    updatePs.setString(1, newEmail);
-                    updatePs.setString(2, npass);
-                    updatePs.setString(3, oldEmail);
-                    int i = updatePs.executeUpdate();
-                    if (i > 0) {
-                        // Update session email if changed
-                        if (!oldEmail.equals(newEmail)) {
-                            session.setAttribute("email", newEmail);
+                        String errorMessage = "";
+                        if (email == null || !email.matches("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$")) {
+                            errorMessage = "Invalid email format.";
+                        } else if (opass == null || opass.length() < 8) {
+                            errorMessage = "Current password is invalid.";
+                        } else if (npass == null || npass.length() < 8) {
+                            errorMessage = "New password must be at least 8 characters.";
+                        } else if (!npass.equals(cpass)) {
+                            errorMessage = "New password and confirm password do not match.";
                         }
-%>
-<div style="text-align:center;margin-top:25%">
-<font color="blue">
-<script type="text/javascript">
-function Redirect() {
-    window.location="profile.jsp";
-}
-document.write("<h2>Password and Email Updated Successfully</h2><br><Br>");
-document.write("<h3>Redirecting you to home page....</h3>");
-setTimeout('Redirect()', 3000);
-</script>
-</font>
-</div>
-<%
-                    }
-                    updatePs.close();
-                } else {
-%>
-<div style="text-align:center;margin-top:25%">
-<font color="red">
-<script type="text/javascript">
-function Redirect() {
-    history.back();
-}
-document.write("<h2>New Password And Confirm Password Must Be Same</h2><br><Br>");
-document.write("<h3>Redirecting you to back page....</h3>");
-setTimeout('Redirect()', 3000);
-</script>
-</font>
-</div>
-<%
-                }
-            } else {
-%>
-<div style="text-align:center;margin-top:25%">
-<font color="red">
-<script type="text/javascript">
-function Redirect() {
-    history.back();
-}
-document.write("<h2>Wrong Current Password</h2><br><Br>");
-document.write("<h3>Redirecting you to back page....</h3>");
-setTimeout('Redirect()', 3000);
-</script>
-</font>
-</div>
-<%
-            }
-        }
-        rs.close();
-        ps.close();
-    }
-%>
+
+                        if (!errorMessage.isEmpty()) {
+                    %>
+                        <div class="alert alert-danger text-center">
+                            <h2>Error: <%= errorMessage %></h2>
+                            <h3>Redirecting back...</h3>
+                            <script type="text/javascript">
+                                setTimeout(function() { window.location="profile.jsp"; }, 3000);
+                            </script>
+                        </div>
+                    <%
+                        } else {
+                            Connection con = null;
+                            PreparedStatement ps = null;
+                            ResultSet rs = null;
+                            try {
+                                con = (Connection) application.getAttribute("connection");
+                                if (con == null) {
+                                    throw new SQLException("Database connection not initialized.");
+                                }
+                                ps = con.prepareStatement("SELECT PASSWORD FROM staffinfo WHERE EMAIL=?");
+                                ps.setString(1, email);
+                                rs = ps.executeQuery();
+                                if (rs.next() && rs.getString("PASSWORD").equals(opass)) {
+                                    ps.close();
+                                    ps = con.prepareStatement("UPDATE staffinfo SET PASSWORD=? WHERE EMAIL=?");
+                                    ps.setString(1, npass); // TODO: Hash password
+                                    ps.setString(2, email);
+                                    int i = ps.executeUpdate();
+                                    if (i > 0) {
+                    %>
+                                        <div class="alert alert-success text-center">
+                                            <h2>Password Updated Successfully</h2>
+                                            <h3>Redirecting to profile page...</h3>
+                                            <script type="text/javascript">
+                                                setTimeout(function() { window.location="profile.jsp"; }, 3000);
+                                            </script>
+                                        </div>
+                    <%
+                                    } else {
+                                        errorMessage = "Failed to update password.";
+                    %>
+                                        <div class="alert alert-danger text-center">
+                                            <h2><%= errorMessage %></h2>
+                                            <h3>Redirecting back...</h3>
+                                            <script type="text/javascript">
+                                                setTimeout(function() { window.location="profile.jsp"; }, 3000);
+                                            </script>
+                                        </div>
+                    <%
+                                    }
+                                } else {
+                                    errorMessage = "Invalid current password.";
+                    %>
+                                    <div class="alert alert-danger text-center">
+                                        <h2><%= errorMessage %></h2>
+                                        <h3>Redirecting back...</h3>
+                                        <script type="text/javascript">
+                                            setTimeout(function() { window.location="profile.jsp"; }, 3000);
+                                        </script>
+                                    </div>
+                    <%
+                                }
+                            } catch (SQLException e) {
+                                errorMessage = "Database error: " + e.getMessage();
+                    %>
+                                <div class="alert alert-danger text-center">
+                                    <h2><%= errorMessage %></h2>
+                                    <h3>Redirecting back...</h3>
+                                    <script type="text/javascript">
+                                        setTimeout(function() { window.location="profile.jsp"; }, 3000);
+                                    </script>
+                                </div>
+                    <%
+                            } finally {
+                                if (rs != null) try { rs.close(); } catch (SQLException e) {}
+                                if (ps != null) try { ps.close(); } catch (SQLException e) {}
+                                if (con != null) try { con.commit(); } catch (SQLException e) {}
+                            }
+                        }
+                    %>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="js/bootstrap.min.js"></script>
+</body>
+</html>

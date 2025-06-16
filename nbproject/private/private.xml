@@ -3,18 +3,55 @@
     <editor-bookmarks xmlns="http://www.netbeans.org/ns/editor-bookmarks/2" lastBookmarkId="0"/>
     <open-files xmlns="http://www.netbeans.org/ns/projectui-open-files/2">
         <group>
-            <file>file:/C:/Users/Lenovo/OneDrive/Documents/GitHub/hms/web/add_admission.jsp</file>
+            <file>file:/C:/Users/Lenovo/OneDrive/Documents/GitHub/hms/web/add_patient_case.jsp</file>
+            <file>file:/C:/Users/Lenovo/OneDrive/Documents/GitHub/hms/web/add_staff_validation.jsp</file>
             <file>file:/C:/Users/Lenovo/OneDrive/Documents/GitHub/hms/web/discharge_patient.jsp</file>
-            <file>file:/C:/Users/Lenovo/OneDrive/Documents/GitHub/hms/web/view_cases.jsp</file>
+            <file>file:/C:/Users/Lenovo/OneDrive/Documents/GitHub/hms/web/admin.jsp</file>
+            <file>file:/C:/Users/Lenovo/OneDrive/Documents/GitHub/hms/web/patient_view_cases.jsp</file>
             <file>file:/C:/Users/Lenovo/OneDrive/Documents/GitHub/hms/web/add_pathology.jsp</file>
-            <file>file:/C:/Users/Lenovo/OneDrive/Documents/GitHub/hms/web/edit_pathology.jsp</file>
-            <file>file:/C:/Users/Lenovo/OneDrive/Documents/GitHub/hms/web/add_patho_validation.jsp</file>
-            <file>file:/C:/Users/Lenovo/OneDrive/Documents/GitHub/hms/web/pathology.jsp</file>
             <file>file:/C:/Users/Lenovo/OneDrive/Documents/GitHub/hms/web/receptionist.jsp</file>
-            <file>file:/C:/Users/Lenovo/OneDrive/Documents/GitHub/hms/web/get_pathology_charges.jsp</file>
-            <file>file:/C:/Users/Lenovo/OneDrive/Documents/GitHub/hms/web/fetch_pathology.jsp</file>
-            <file>file:/C:/Users/Lenovo/OneDrive/Documents/GitHub/hms/web/view_pathology_by_case.jsp</file>
+            <file>file:/C:/Users/Lenovo/OneDrive/Documents/GitHub/hms/web/add_case_receptionist.jsp</file>
+            <file>file:/C:/Users/Lenovo/OneDrive/Documents/GitHub/hms/web/getAllDoctors.jsp</file>
+            <file>file:/C:/Users/Lenovo/OneDrive/Documents/GitHub/hms/web/get_billing%20_detail.jsp</file>
+            <file>file:/C:/Users/Lenovo/OneDrive/Documents/GitHub/hms/web/room.jsp</file>
+            <file>file:/C:/Users/Lenovo/OneDrive/Documents/GitHub/hms/web/billing.jsp</file>
+            <file>file:/C:/Users/Lenovo/OneDrive/Documents/GitHub/hms/web/retrieve_beds_validation.jsp</file>
             <file>file:/C:/Users/Lenovo/OneDrive/Documents/GitHub/hms/web/add_patient_receptionist.jsp</file>
+            <file>file:/C:/Users/Lenovo/OneDrive/Documents/GitHub/hms/web/profile.jsp</file>
+            <file>file:/C:/Users/Lenovo/OneDrive/Documents/GitHub/hms/web/header.jsp</file>
+            <file>file:/C:/Users/Lenovo/OneDrive/Documents/GitHub/hms/web/change_pass_validation.jsp</file>
+            <file>file:/C:/Users/Lenovo/OneDrive/Documents/GitHub/hms/web/edit_staff_validation.jsp</file>
+            <file>file:/C:/Users/Lenovo/OneDrive/Documents/GitHub/hms/web/add_admission.jsp</file>
+            <file>file:/C:/Users/Lenovo/OneDrive/Documents/GitHub/hms/web/doctor.jsp</file>
+            <file>file:/C:/Users/Lenovo/OneDrive/Documents/GitHub/hms/web/change_pass_validation_receptionist.jsp</file>
+            <file>file:/C:/Users/Lenovo/OneDrive/Documents/GitHub/hms/web/edit_patient_validation.jsp</file>
+            <file>file:/C:/Users/Lenovo/OneDrive/Documents/GitHub/hms/web/edit_room_validation.jsp</file>
+            <file>file:/C:/Users/Lenovo/OneDrive/Documents/GitHub/hms/web/delete_patient_validation.jsp</file>
+            <file>file:/C:/Users/Lenovo/OneDrive/Documents/GitHub/hms/web/edit_patient_pathology.jsp</file>
+            <file>file:/C:/Users/Lenovo/OneDrive/Documents/GitHub/hms/web/edit_patho_validation.jsp</file>
+            <file>file:/C:/Users/Lenovo/OneDrive/Documents/GitHub/hms/web/add_room_validation.jsp</file>
+            <file>file:/C:/Users/Lenovo/OneDrive/Documents/GitHub/hms/web/pateint_discharge.jsp</file>
+            <file>file:/C:/Users/Lenovo/OneDrive/Documents/GitHub/hms/web/my_pathology.jsp</file>
+            <file>file:/C:/Users/Lenovo/OneDrive/Documents/GitHub/hms/web/get_patient_billing.jsp</file>
+            <file>file:/C:/Users/Lenovo/OneDrive/Documents/GitHub/hms/web/add_patient_admission.jsp</file>
+            <file>file:/C:/Users/Lenovo/OneDrive/Documents/GitHub/hms/web/department.jsp</file>
+            <file>file:/C:/Users/Lenovo/OneDrive/Documents/GitHub/hms/web/add_patient_validation.jsp</file>
+            <file>file:/C:/Users/Lenovo/OneDrive/Documents/GitHub/hms/web/add_billing_validation.jsp</file>
+            <file>file:/C:/Users/Lenovo/OneDrive/Documents/GitHub/hms/web/delete_room_validation.jsp</file>
+            <file>file:/C:/Users/Lenovo/OneDrive/Documents/GitHub/hms/web/add_patients_validation.jsp</file>
+            <file>file:/C:/Users/Lenovo/OneDrive/Documents/GitHub/hms/web/view_cases.jsp</file>
+            <file>file:/C:/Users/Lenovo/OneDrive/Documents/GitHub/hms/web/patients.jsp</file>
+            <file>file:/C:/Users/Lenovo/OneDrive/Documents/GitHub/hms/web/getDoctorByReason.jsp</file>
+            <file>file:/C:/Users/Lenovo/OneDrive/Documents/GitHub/hms/web/getDoctorByCase.jsp</file>
+            <file>file:/C:/Users/Lenovo/OneDrive/Documents/GitHub/hms/web/get_room_charges.jsp</file>
+            <file>file:/C:/Users/Lenovo/OneDrive/Documents/GitHub/hms/web/patient_view_pathology_by_case.jsp</file>
+            <file>file:/C:/Users/Lenovo/OneDrive/Documents/GitHub/hms/web/get_pathology_charges.jsp</file>
+            <file>file:/C:/Users/Lenovo/OneDrive/Documents/GitHub/hms/web/profile_receptionist.jsp</file>
+            <file>file:/C:/Users/Lenovo/OneDrive/Documents/GitHub/hms/web/add_patient_pathology.jsp</file>
+            <file>file:/C:/Users/Lenovo/OneDrive/Documents/GitHub/hms/web/get_patient_charges.jsp</file>
+            <file>file:/C:/Users/Lenovo/OneDrive/Documents/GitHub/hms/web/update_profile_receptionist.jsp</file>
+            <file>file:/C:/Users/Lenovo/OneDrive/Documents/GitHub/hms/web/menu.jsp</file>
+            <file>file:/C:/Users/Lenovo/OneDrive/Documents/GitHub/hms/web/delete_patho_validation.jsp</file>
         </group>
     </open-files>
 </project-private>

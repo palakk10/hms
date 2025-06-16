@@ -49,6 +49,9 @@
             try {
                 roomNoInt = Integer.parseInt(roomNo);
                 bedNoInt = Integer.parseInt(bedNo);
+                if (roomNoInt <= 0 || bedNoInt <= 0) {
+                    throw new Exception("Room and bed numbers must be positive.");
+                }
             } catch (NumberFormatException e) {
                 throw new Exception("Invalid room or bed number format.");
             }
@@ -61,7 +64,7 @@
             con.setAutoCommit(false); // Begin transaction
 
             // Check if room is assigned to any patient
-            checkPs = con.prepareStatement("SELECT COUNT(*) FROM patient_info WHERE ROOM_NO = ? AND BED_NO = ?");
+            checkPs = con.prepareStatement("SELECT COUNT(*) FROM admission WHERE ROOM_NO = ? AND BED_NO = ? AND DISCHARGE_DATE IS NULL");
             checkPs.setInt(1, roomNoInt);
             checkPs.setInt(2, bedNoInt);
             ResultSet rs = checkPs.executeQuery();
@@ -71,7 +74,7 @@
             checkPs.close();
 
             if (patientCount > 0) {
-                throw new Exception("Room deletion blocked due to active patient assignment. Please reassign or discharge the patient before removing the room.");
+                throw new Exception("Room deletion blocked due to active patient assignment. Please discharge the patient before removing the room.");
             }
 
             // Delete room
@@ -89,7 +92,6 @@
             con.commit();
         } catch (SQLException e) {
             errorMessage = "Database error: " + e.getMessage();
-            e.printStackTrace();
             try {
                 if (con != null) con.rollback();
             } catch (SQLException ex) {
@@ -97,7 +99,6 @@
             }
         } catch (Exception e) {
             errorMessage = e.getMessage();
-            e.printStackTrace();
             try {
                 if (con != null) con.rollback();
             } catch (SQLException ex) {

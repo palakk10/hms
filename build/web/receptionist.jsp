@@ -16,90 +16,152 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link href="images/logo.png" rel="icon"/>
     <title>Receptionist Dashboard</title>
-    <!-- Bootstrap and jQuery (local assets only to avoid conflicts) -->
+    <!-- Bootstrap and jQuery -->
     <link href="css/bootstrap.min.css" rel="stylesheet">
     <script src="js/jquery.js"></script>
     <script src="js/bootstrap.min.js"></script>
     <style>
-    body {
-        padding-top: 50px; /* Space for fixed navbar */
-        /* Updated background image path - replace 'images/receptionist_background.jpg' with your actual image path */
-        background: url('images/receptionist_background.jpg') no-repeat center center fixed;
-        /* Fallback placeholder for testing - replace or remove in production */
-        background: url('https://via.placeholder.com/1920x1080?text=Receptionist+Background') no-repeat center center fixed;
-        background-size: cover;
-        position: relative;
-    }
-    /* Semi-transparent overlay for readability */
-    body::before {
-        content: '';
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background: rgba(255, 255, 255, 0.7); /* White overlay with 70% opacity */
-        z-index: -1;
-    }
-    .navbar-custom {
-        position: fixed;
-        top: 0;
-        width: 100%;
-        z-index: 1000;
-        background-color: #337ab7;
-        border-color: #2e6da4;
-    }
-    .navbar-custom .navbar-brand,
-    .navbar-custom .navbar-nav > li > a {
-        color: #fff;
-    }
-    .navbar-custom .navbar-nav > li > a:hover,
-    .navbar-custom .navbar-nav > li > a:focus {
-        background-color: #2e6da4;
-    }
-    .maincontent {
-        margin-left: 16.66%; /* Match sidebar width */
-        padding: 20px;
-        background: rgba(255, 255, 255, 0.9); /* Slightly transparent white background for content */
-        border-radius: 5px;
-    }
-    .contentinside {
-        margin-top: 20px;
-    }
-    .panel-heading {
-        background-color: #337ab7 !important;
-        color: #fff !important;
-        font-size: 18px;
-    }
-    .table th {
-        background-color: #f5f5f5;
-    }
-    .modal-header {
-        background-color: #337ab7;
-        color: #fff;
-    }
-    .modal-header .close {
-        color: #fff;
-        opacity: 0.8;
-    }
-    .modal-header .close:hover {
-        opacity: 1;
-    }
-    @media (max-width: 767px) {
-        .maincontent {
-            margin-left: 0;
+        body {
+            padding-top: 50px;
+            /* Replace with your actual background image path */
+            background: url('images/receptionist_background.jpg') no-repeat center center fixed;
+            /* Fallback placeholder */
+            background: url('https://via.placeholder.com/1920x1080?text=Receptionist+Background') no-repeat center center fixed;
+            background-size: cover;
+            position: relative;
         }
-    }
-</style>
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(255, 255, 255, 0.7);
+            z-index: -1;
+        }
+        .navbar-custom {
+            position: fixed;
+            top: 0;
+            width: 100%;
+            z-index: 1000;
+            background-color: #337ab7;
+            border-color: #2e6da4;
+        }
+        .navbar-custom .navbar-brand,
+        .navbar-custom .navbar-nav > li > a {
+            color: #fff;
+        }
+        .navbar-custom .navbar-nav > li > a:hover,
+        .navbar-custom .navbar-nav > li > a:focus {
+            background-color: #2e6da4;
+        }
+        .maincontent {
+            margin-left: 16.66%;
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.9);
+            border-radius: 5px;
+        }
+        .contentinside {
+            margin-top: 20px;
+        }
+        .panel-heading {
+            background-color: #337ab7 !important;
+            color: #fff !important;
+            font-size: 18px;
+        }
+        .table th {
+            background-color: #f5f5f5;
+        }
+        .modal-header {
+            background-color: #337ab7;
+            color: #fff;
+        }
+        .modal-header .close {
+            color: #fff;
+            opacity: 0.8;
+        }
+        .modal-header .close:hover {
+            opacity: 1;
+        }
+        .alert {
+            margin-bottom: 20px;
+            position: relative;
+            z-index: 1001;
+        }
+        @media (max-width: 767px) {
+            .maincontent {
+                margin-left: 0;
+            }
+        }
+    </style>
     <script>
         $(document).ready(function() {
+            // Auto-dismiss alerts after 5 seconds
+            setTimeout(function() {
+                $('.alert').fadeOut('slow', function() {
+                    $(this).remove();
+                });
+            }, 5000);
+
+            // Validate Add Patient form
+            $('#addPatientModal form').submit(function(e) {
+                var name = $('input[name="name"]').val().trim();
+                var email = $('input[name="email"]').val().trim();
+                var phone = $('input[name="phone"]').val().trim();
+                var age = $('input[name="age"]').val().trim();
+                var dob = $('input[name="dob"]').val();
+                var emailRegex = /^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$/;
+                var phoneRegex = /^\d{10,15}$/;
+
+                if (!name) {
+                    alert('Please enter a patient name.');
+                    e.preventDefault();
+                    return false;
+                }
+
+                if (!emailRegex.test(email)) {
+                    alert('Please enter a valid email address.');
+                    e.preventDefault();
+                    return false;
+                }
+
+                if (!phoneRegex.test(phone)) {
+                    alert('Please enter a valid phone number (10-15 digits).');
+                    e.preventDefault();
+                    return false;
+                }
+
+                if (!age || age < 0 || age > 150) {
+                    alert('Please enter a valid age (0-150).');
+                    e.preventDefault();
+                    return false;
+                }
+
+                if (dob && new Date(dob) > new Date()) {
+                    alert('Date of birth cannot be in the future.');
+                    e.preventDefault();
+                    return false;
+                }
+
+                if (age && dob) {
+                    var dobDate = new Date(dob);
+                    var ageFromDob = Math.floor((new Date() - dobDate) / (1000 * 60 * 60 * 24 * 365));
+                    if (Math.abs(age - ageFromDob) > 1) {
+                        alert('Age does not match date of birth.');
+                        e.preventDefault();
+                        return false;
+                    }
+                }
+
+                return true;
+            });
+
             $('#addCaseModal').on('show.bs.modal', function(event) {
                 var button = $(event.relatedTarget);
                 var patientId = button.data('patient-id');
                 $(this).find('#case_patient_id').val(patientId);
-                // Reset doctor dropdown to prevent stale data
                 $('#case_doctor_id').html('<option value="">Loading...</option>');
-                // Fetch all doctors initially
                 $.ajax({
                     url: 'getAllDoctors.jsp',
                     method: 'GET',
@@ -118,7 +180,6 @@
                 });
             });
 
-            // When reason of visit changes, fetch and select the appropriate doctor
             $('#case_reason').change(function() {
                 var reason = $(this).val();
                 if (reason) {
@@ -130,11 +191,9 @@
                         success: function(data) {
                             var doctorSelect = $('#case_doctor_id');
                             if (data.doctorId && data.doctorName) {
-                                // Ensure the doctor is in the dropdown
                                 if (doctorSelect.find('option[value="' + data.doctorId + '"]').length === 0) {
                                     doctorSelect.append('<option value="' + data.doctorId + '">' + data.doctorName + '</option>');
                                 }
-                                // Select the doctor
                                 doctorSelect.val(data.doctorId);
                             } else {
                                 doctorSelect.val('');
@@ -352,7 +411,7 @@
                             <div class="form-group">
                                 <label class="col-sm-3 control-label">Age</label>
                                 <div class="col-sm-9">
-                                    <input type="number" name="age" class="form-control" placeholder="Age" required min="0">
+                                    <input type="number" name="age" class="form-control" placeholder="Age" required min="0" max="150">
                                 </div>
                             </div>
                             <div class="form-group">
@@ -379,7 +438,7 @@
                             <div class="form-group">
                                 <label class="col-sm-3 control-label">Phone</label>
                                 <div class="col-sm-9">
-                                    <input type="text" name="phone" class="form-control" placeholder="Phone Number" required>
+                                    <input type="text" name="phone" class="form-control" placeholder="Phone Number" required pattern="\d{10,15}">
                                 </div>
                             </div>
                             <div class="form-group">
@@ -421,7 +480,7 @@
                             <div class="form-group">
                                 <label class="col-sm-3 control-label">Pincode</label>
                                 <div class="col-sm-9">
-                                    <input type="text" name="pincode" class="form-control" placeholder="Pincode">
+                                    <input type="text" name="pincode" class="form-control" placeholder="Pincode" pattern="\d{5,10}?">
                                 </div>
                             </div>
                             <div class="form-group">
@@ -460,7 +519,7 @@
                             <div class="form-group">
                                 <label class="col-sm-3 control-label">Case Date</label>
                                 <div class="col-sm-9">
-                                    <input type="date" name="case_date" class="form-control" required>
+                                    <input type="date" name="case_date" class="form-control" required value="2025-06-15">
                                 </div>
                             </div>
                             <div class="form-group">
@@ -512,7 +571,6 @@
             </div>
         </div>
         <%
-            // Generate a separate Add Admission modal for each patient to embed the CASE_ID and DOCTOR_ID directly
             try {
                 psPatients = conn.prepareStatement("SELECT ID FROM patient_info ORDER BY ID");
                 rsPatients = psPatients.executeQuery();
@@ -550,7 +608,6 @@
                                                 rsCase = psCase.executeQuery();
                                                 if (rsCase.next()) {
                                                     int caseId = rsCase.getInt("CASE_ID");
-                                                    int doctorId = rsCase.getInt("DOCTOR_ID");
                                                     out.println("<option value=\"" + caseId + "\">" + caseId + "</option>");
                                                 } else {
                                                     out.println("<option value=\"\">No cases found for this patient</option>");
@@ -622,7 +679,7 @@
                                                         String roomType = rsRooms.getString("TYPE");
                                                         String bedNo = rsRooms.getString("BED_NO");
                                                         String displayText = roomNo + " - " + (roomType != null ? roomType : "Unknown Type") + " - Bed " + bedNo;
-                                                        String value = roomNo + "|" + bedNo; // Format: "room_no|bed_no"
+                                                        String value = roomNo + "|" + bedNo;
                                                         out.println("<option value=\"" + value + "\">" + displayText + "</option>");
                                                     }
                                                 }
@@ -634,7 +691,6 @@
                                             }
                                         %>
                                     </select>
-                                    <!-- Hidden fields to store room_no and bed_no for form submission -->
                                     <input type="hidden" name="room_no" id="room_no">
                                     <input type="hidden" name="bed_no" id="bed_no">
                                 </div>

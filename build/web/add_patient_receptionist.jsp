@@ -1,150 +1,163 @@
-```jsp
-<%@page import="java.sql.*"%>
-<%@page import="java.text.SimpleDateFormat"%>
+<%@page import="java.sql.*, java.text.SimpleDateFormat, java.util.Date"%>
+<%@page contentType="text/html" pageEncoding="UTF-8"%>
 <%
-    response.setHeader("cache-control", "no-cache, no-store, must-revalidate");
-    String emaill = (String) session.getAttribute("email");
-    String namee = (String) session.getAttribute("name");
-    if (emaill == null || namee == null) {
+    // Prevent caching
+    response.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+    response.setHeader("Pragma", "no-cache");
+    response.setHeader("Expires", "0");
+
+    // Check session
+    String email = (String) session.getAttribute("email");
+    String name = (String) session.getAttribute("name");
+    if (email == null || name == null) {
         response.sendRedirect("index.jsp");
         return;
     }
 
-    Connection c = (Connection) application.getAttribute("connection");
-    if (c == null) {
-        out.println("<script>alert('Error: Database connection is null.'); window.location='receptionist.jsp';</script>");
-        return;
-    }
-
-    String pname = request.getParameter("pname");
-    String email = request.getParameter("email");
-    String phone = request.getParameter("phone");
-    String gender = request.getParameter("gender");
-    String ageStr = request.getParameter("age");
-    String dobStr = request.getParameter("dob");
-    String bgroup = request.getParameter("bgroup");
-    String street = request.getParameter("street");
-    String area = request.getParameter("area");
-    String city = request.getParameter("city");
-    String state = request.getParameter("state");
-    String country = request.getParameter("country");
-    String pincode = request.getParameter("pincode");
-    String medicalHistory = request.getParameter("medical_history");
-    String reason = request.getParameter("reason");
-    String doctorIdStr = request.getParameter("doctor_id");
-    String conditionDetails = request.getParameter("condition_details");
-
-    // Input validation
-    if (pname == null || email == null || phone == null || gender == null || ageStr == null ||
-        dobStr == null || bgroup == null || street == null || area == null || city == null ||
-        state == null || country == null || pincode == null || reason == null || doctorIdStr == null ||
-        pname.trim().isEmpty() || email.trim().isEmpty() || phone.trim().isEmpty() ||
-        gender.trim().isEmpty() || ageStr.trim().isEmpty() || dobStr.trim().isEmpty() ||
-        bgroup.trim().isEmpty() || street.trim().isEmpty() || area.trim().isEmpty() ||
-        city.trim().isEmpty() || state.trim().isEmpty() || country.trim().isEmpty() ||
-        pincode.trim().isEmpty() || reason.trim().isEmpty() || doctorIdStr.trim().isEmpty()) {
-        out.println("<script>alert('Error: All required fields must be filled.'); window.location='receptionist.jsp?status=error';</script>");
-        return;
-    }
-
-    PreparedStatement psPatient = null;
-    PreparedStatement psCase = null;
-    ResultSet rs = null;
-    boolean success = false;
+    // Initialize variables
+    Connection conn = null;
+    PreparedStatement ps = null;
+    String message = null;
 
     try {
-        c.setAutoCommit(false); // Start transaction
-
-        // Parse numeric inputs
-        int age = Integer.parseInt(ageStr);
-        int doctorId = Integer.parseInt(doctorIdStr);
-
-        // Validate phone and pincode
-        if (!phone.matches("\\d{10}")) {
-            throw new Exception("Invalid phone number. Must be 10 digits.");
-        }
-        if (!pincode.matches("\\d{6}")) {
-            throw new Exception("Invalid pincode. Must be 6 digits.");
+        // Get database connection
+        conn = (Connection) application.getAttribute("connection");
+        if (conn == null) {
+            message = "Error: Database connection is unavailable.";
+            throw new SQLException("Connection is null");
         }
 
-        // Validate DOB
-        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
-        sdf.setLenient(false);
-        java.util.Date dobUtil = sdf.parse(dobStr);
-        java.sql.Date dob = new java.sql.Date(dobUtil.getTime());
+        // Get form parameters
+        String patientName = request.getParameter("name") != null ? request.getParameter("name").trim() : "";
+        String gender = request.getParameter("gender");
+        String ageStr = request.getParameter("age");
+        String dobStr = request.getParameter("dob");
+        String bloodGroup = request.getParameter("bgroup");
+        String phone = request.getParameter("phone") != null ? request.getParameter("phone").trim() : "";
+        String patientEmail = request.getParameter("email") != null ? request.getParameter("email").trim() : "";
+        String street = request.getParameter("street") != null ? request.getParameter("street").trim() : "";
+        String area = request.getParameter("area") != null ? request.getParameter("area").trim() : "";
+        String city = request.getParameter("city") != null ? request.getParameter("city").trim() : "";
+        String state = request.getParameter("state") != null ? request.getParameter("state").trim() : "";
+        String country = request.getParameter("country") != null ? request.getParameter("country").trim() : "";
+        String pincode = request.getParameter("pincode") != null ? request.getParameter("pincode").trim() : "";
+        String medicalHistory = request.getParameter("medical_history") != null ? request.getParameter("medical_history").trim() : "";
 
-        // Validate age against DOB
-        java.util.Calendar dobCal = java.util.Calendar.getInstance();
-        dobCal.setTime(dob);
-        java.util.Calendar now = java.util.Calendar.getInstance();
-        int calculatedAge = now.get(java.util.Calendar.YEAR) - dobCal.get(java.util.Calendar.YEAR);
-        if (now.get(java.util.Calendar.DAY_OF_YEAR) < dobCal.get(java.util.Calendar.DAY_OF_YEAR)) {
-            calculatedAge--;
+        // Validate required fields
+        if (patientName.isEmpty() || patientEmail.isEmpty() || phone.isEmpty() || gender == null || ageStr == null || bloodGroup == null) {
+            message = "Error: Name, email, phone, gender, age, and blood group are required.";
+            throw new IllegalArgumentException("Required fields missing");
         }
-        if (age != calculatedAge) {
-            throw new Exception("Age does not match Date of Birth.");
+
+        // Validate email format
+        if (!patientEmail.matches("^[\\w-\\.]+@([\\w-]+\\.)+[\\w-]{2,4}$")) {
+            message = "Error: Invalid email format.";
+            throw new IllegalArgumentException("Invalid email");
         }
 
-        // Insert into patient_info (excluding PASSWORD)
-        String sqlPatient = "INSERT INTO patient_info (PNAME, GENDER, AGE, DOB, BGROUP, PHONE, EMAIL, STREET, AREA, CITY, STATE, COUNTRY, PINCODE, MEDICAL_HISTORY) " +
-                           "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
-        psPatient = c.prepareStatement(sqlPatient, Statement.RETURN_GENERATED_KEYS);
-        psPatient.setString(1, pname);
-        psPatient.setString(2, gender);
-        psPatient.setInt(3, age);
-        psPatient.setDate(4, dob);
-        psPatient.setString(5, bgroup);
-        psPatient.setString(6, phone);
-        psPatient.setString(7, email);
-        psPatient.setString(8, street);
-        psPatient.setString(9, area);
-        psPatient.setString(10, city);
-        psPatient.setString(11, state);
-        psPatient.setString(12, country);
-        psPatient.setString(13, pincode);
-        psPatient.setString(14, medicalHistory != null && !medicalHistory.trim().isEmpty() ? medicalHistory.trim().replaceAll("[\\r\\n]+", " ") : null);
-        int rowsPatient = psPatient.executeUpdate();
+        // Validate phone (10-15 digits)
+        if (!phone.matches("\\d{10,15}")) {
+            message = "Error: Phone number must be 10-15 digits.";
+            throw new IllegalArgumentException("Invalid phone");
+        }
 
-        if (rowsPatient > 0) {
-            // Get generated patient ID
-            rs = psPatient.getGeneratedKeys();
-            if (rs.next()) {
-                int patientId = rs.getInt(1);
-                // Insert into case_master
-                String sqlCase = "INSERT INTO case_master (CASE_DATE, PATIENT_ID, DOCTOR_ID, REASON, CONDITION_DETAILS) VALUES (CURDATE(), ?, ?, ?, ?)";
-                psCase = c.prepareStatement(sqlCase);
-                psCase.setInt(1, patientId);
-                psCase.setInt(2, doctorId);
-                psCase.setString(3, reason.trim());
-                psCase.setString(4, conditionDetails != null && !conditionDetails.trim().isEmpty() ? conditionDetails.trim().replaceAll("[\\r\\n]+", " ") : null);
-                int rowsCase = psCase.executeUpdate();
+        // Validate pincode (if provided)
+        if (!pincode.isEmpty() && !pincode.matches("\\d{5,10}")) {
+            message = "Error: Pincode must be 5-10 digits.";
+            throw new IllegalArgumentException("Invalid pincode");
+        }
 
-                if (rowsCase > 0) {
-                    c.commit(); // Commit transaction
-                    success = true;
-                    out.println("<script>alert('Patient and case added successfully!'); window.location='receptionist.jsp?status=success';</script>");
+        // Validate age
+        int age = 0;
+        try {
+            age = Integer.parseInt(ageStr);
+            if (age < 0 || age > 150) {
+                message = "Error: Age must be between 0 and 150.";
+                throw new IllegalArgumentException("Invalid age");
+            }
+        } catch (NumberFormatException e) {
+            message = "Error: Age must be a valid number.";
+            throw new IllegalArgumentException("Invalid age format");
+        }
+
+        // Validate DOB (if provided)
+        java.sql.Date dob = null;
+        if (dobStr != null && !dobStr.isEmpty()) {
+            try {
+                SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
+                sdf.setLenient(false);
+                Date parsedDob = sdf.parse(dobStr);
+                dob = new java.sql.Date(parsedDob.getTime());
+                // Check if DOB is in the future
+                if (dob.after(new Date())) {
+                    message = "Error: Date of birth cannot be in the future.";
+                    throw new IllegalArgumentException("Invalid DOB");
                 }
+                // Validate age against DOB
+                long ageFromDob = (new Date().getTime() - parsedDob.getTime()) / (1000L * 60 * 60 * 24 * 365);
+                if (Math.abs(age - ageFromDob) > 1) {
+                    message = "Error: Age does not match date of birth.";
+                    throw new IllegalArgumentException("Age-DOB mismatch");
+                }
+            } catch (java.text.ParseException e) {
+                message = "Error: Invalid date of birth format.";
+                throw new IllegalArgumentException("Invalid DOB format");
             }
         }
 
-        if (!success) {
-            c.rollback(); // Rollback on failure
-            out.println("<script>alert('Error: Failed to add patient or case.'); window.location='receptionist.jsp?status=error';</script>");
+        // Validate gender and blood group
+        if (!gender.matches("Male|Female|Other")) {
+            message = "Error: Invalid gender.";
+            throw new IllegalArgumentException("Invalid gender");
         }
+        if (!bloodGroup.matches("A\\+|A-|B\\+|B-|AB\\+|AB-|O\\+|O-")) {
+            message = "Error: Invalid blood group.";
+            throw new IllegalArgumentException("Invalid blood group");
+        }
+
+        // Insert into patient_info
+        String sql = "INSERT INTO patient_info (PNAME, GENDER, AGE, DOB, BGROUP, PHONE, EMAIL, STREET, AREA, CITY, STATE, COUNTRY, PINCODE, MEDICAL_HISTORY) " +
+                     "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+        ps = conn.prepareStatement(sql);
+        ps.setString(1, patientName);
+        ps.setString(2, gender);
+        ps.setInt(3, age);
+        ps.setDate(4, dob);
+        ps.setString(5, bloodGroup);
+        ps.setString(6, phone);
+        ps.setString(7, patientEmail);
+        ps.setString(8, street.isEmpty() ? null : street);
+        ps.setString(9, area.isEmpty() ? null : area);
+        ps.setString(10, city.isEmpty() ? null : city);
+        ps.setString(11, state.isEmpty() ? null : state);
+        ps.setString(12, country.isEmpty() ? null : country);
+        ps.setString(13, pincode.isEmpty() ? null : pincode);
+        ps.setString(14, medicalHistory.isEmpty() ? null : medicalHistory);
+
+        // Execute insert
+        int rows = ps.executeUpdate();
+        if (rows > 0) {
+            message = "Patient added successfully.";
+        } else {
+            message = "Error: Failed to add patient.";
+        }
+
     } catch (SQLException e) {
-        try { c.rollback(); } catch (SQLException rollbackEx) {}
-        out.println("<script>alert('Error: " + e.getMessage().replace("'", "\\'") + "'); window.location='receptionist.jsp?status=error';</script>");
-    } catch (NumberFormatException e) {
-        out.println("<script>alert('Error: Invalid age or doctor ID.'); window.location='receptionist.jsp?status=error';</script>");
-    } catch (java.text.ParseException e) {
-        out.println("<script>alert('Error: Invalid date of birth format.'); window.location='receptionist.jsp?status=error';</script>");
+        if (e.getSQLState().equals("23000") && e.getMessage().contains("EMAIL")) {
+            message = "Error: Email '" + request.getParameter("email") + "' already exists.";
+        } else {
+            message = "Error: Database error - " + e.getMessage();
+        }
+    } catch (IllegalArgumentException e) {
+        // Message already set in validation
     } catch (Exception e) {
-        out.println("<script>alert('Error: " + e.getMessage().replace("'", "\\'") + "'); window.location='receptionist.jsp?status=error';</script>");
+        message = "Error: Unexpected error - " + e.getMessage();
     } finally {
-        if (rs != null) try { rs.close(); } catch (SQLException e) {}
-        if (psPatient != null) try { psPatient.close(); } catch (SQLException e) {}
-        if (psCase != null) try { psCase.close(); } catch (SQLException e) {}
-        try { c.setAutoCommit(true); } catch (SQLException e) {}
+        if (ps != null) try { ps.close(); } catch (SQLException e) {}
+        // Do not close conn as it's application-scoped
     }
+
+    // Set message and redirect
+    session.setAttribute("patientMessage", message);
+    response.sendRedirect("receptionist.jsp");
 %>
-```
